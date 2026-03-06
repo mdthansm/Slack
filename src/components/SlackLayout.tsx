@@ -6,7 +6,6 @@ import { Sidebar } from "@/components/sidebar/Sidebar";
 import { ChannelView } from "@/components/channel/ChannelView";
 import { DirectMessageView } from "@/components/dm/DirectMessageView";
 import { HomeView } from "@/components/views/HomeView";
-import { DmListPanel } from "@/components/views/DmListPanel";
 import { ActivityView } from "@/components/views/ActivityView";
 import { FilesView } from "@/components/views/FilesView";
 import { AppHeader } from "@/components/AppHeader";
@@ -23,7 +22,6 @@ export function SlackLayout() {
   const [startDmOpen, setStartDmOpen] = useState(false);
 
   const closeSidebar = useCallback(() => setSidebarOpen(false), []);
-
   const handleSelectChannel = useCallback((channelId: Id<"channels">) => {
     setSelected({ type: "channel", channelId });
     setSidebarOpen(false);
@@ -38,7 +36,7 @@ export function SlackLayout() {
   }, []);
 
   return (
-    <div className="flex h-screen bg-[#f8f8f8] overflow-hidden">
+    <div className="flex h-screen bg-white overflow-hidden">
       <Sidebar
         selectedWorkspaceId={selectedWorkspaceId}
         onSelectWorkspace={(id) => {
@@ -67,59 +65,32 @@ export function SlackLayout() {
           {selected?.type === "channel" && selectedWorkspaceId && (
             <motion.div
               key={`channel-${selected.channelId}`}
-              initial={{ opacity: 0, x: 10 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -10 }}
-              transition={{ duration: 0.2 }}
-              className="flex-1 flex flex-col min-h-0"
-            >
-              <ChannelView
-                workspaceId={selectedWorkspaceId}
-                channelId={selected.channelId}
-              />
-            </motion.div>
-          )}
-          {/* DMs view: main area = only thread or empty (DM list is inside Sidebar) */}
-          {leftNavActive === "dms" && selectedWorkspaceId && (
-            <motion.div
-              key="dms-main"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="flex-1 flex flex-col min-w-0 min-h-0"
-            >
-              {selected?.type === "dm" ? (
-                <DirectMessageView
-                  workspaceId={selectedWorkspaceId}
-                  threadId={selected.threadId}
-                />
-              ) : (
-                <div className="flex-1 flex flex-col items-center justify-center bg-white text-gray-500 min-w-0">
-                  <p className="text-lg font-medium text-gray-700">Select a conversation</p>
-                  <p className="text-sm mt-1">Choose a conversation from the list in the sidebar.</p>
-                </div>
-              )}
-            </motion.div>
-          )}
-          {/* DM selected but not on DMs tab (e.g. from Home): full-width thread */}
-          {selected?.type === "dm" && selectedWorkspaceId && leftNavActive !== "dms" && (
-            <motion.div
-              key={`dm-full-${selected.threadId}`}
-              initial={{ opacity: 0, x: 10 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -10 }}
-              transition={{ duration: 0.2 }}
+              transition={{ duration: 0.15 }}
               className="flex-1 flex flex-col min-h-0"
             >
-              <DirectMessageView
-                workspaceId={selectedWorkspaceId}
-                threadId={selected.threadId}
-              />
+              <ChannelView workspaceId={selectedWorkspaceId} channelId={selected.channelId} />
             </motion.div>
           )}
-          {!selected && selectedWorkspaceId && leftNavActive !== "dms" && (
+
+          {selected?.type === "dm" && selectedWorkspaceId && (
             <motion.div
-              key="nav-views"
+              key={`dm-${selected.threadId}`}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
+              className="flex-1 flex flex-col min-h-0"
+            >
+              <DirectMessageView workspaceId={selectedWorkspaceId} threadId={selected.threadId} />
+            </motion.div>
+          )}
+
+          {!selected && selectedWorkspaceId && (
+            <motion.div
+              key="views"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
@@ -132,25 +103,29 @@ export function SlackLayout() {
                   onSelectDm={handleSelectDm}
                 />
               )}
+              {leftNavActive === "dms" && (
+                <div className="flex-1 flex flex-col items-center justify-center text-gray-400">
+                  <p className="font-medium text-gray-600">Select a conversation</p>
+                  <p className="text-sm mt-1">Choose a conversation from the sidebar.</p>
+                </div>
+              )}
               {leftNavActive === "activity" && (
-                <ActivityView
-                  workspaceId={selectedWorkspaceId}
-                  onSelectChannel={handleSelectChannel}
-                />
+                <ActivityView workspaceId={selectedWorkspaceId} onSelectChannel={handleSelectChannel} />
               )}
               {leftNavActive === "files" && <FilesView workspaceId={selectedWorkspaceId} />}
             </motion.div>
           )}
+
           {!selected && !selectedWorkspaceId && (
             <motion.div
               key="welcome"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="flex-1 flex flex-col items-center justify-center bg-[#f8f8f8] px-4 sm:px-6 py-8"
+              className="flex-1 flex flex-col items-center justify-center px-6 py-8"
             >
-              <h1 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2 text-center">Welcome to Slack Clone</h1>
-              <p className="text-gray-600 text-center text-sm sm:text-base max-w-md">
+              <h1 className="text-xl font-bold text-gray-900 mb-2">Welcome to Slack Clone</h1>
+              <p className="text-gray-500 text-sm text-center max-w-sm">
                 Select or create a workspace from the sidebar to get started.
               </p>
             </motion.div>

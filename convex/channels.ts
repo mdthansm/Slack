@@ -125,11 +125,50 @@ export const getMembership = query({
       const isWsAdmin =
         wsMembership?.role === "admin" || workspace?.createdBy === args.userId;
       if (isWsAdmin) {
-        return { role: "admin" as const };
+        return { role: "admin" as const, autoJoinNeeded: true };
       }
     }
 
     return null;
+  },
+});
+
+/** Auto-join a workspace admin to a channel they haven't explicitly joined yet. */
+export const joinAsWorkspaceAdmin = mutation({
+  args: {
+    channelId: v.id("channels"),
+    userId: v.id("users"),
+  },
+  handler: async (ctx, args) => {
+    const channel = await ctx.db.get(args.channelId);
+    if (!channel) throw new Error("Channel not found");
+
+    const wsMember = await ctx.db
+      .query("workspaceMembers")
+      .withIndex("by_workspace_and_user", (q) =>
+        q.eq("workspaceId", channel.workspaceId).eq("userId", args.userId)
+      )
+      .first();
+    const workspace = await ctx.db.get(channel.workspaceId);
+    const isWsAdmin =
+      wsMember?.role === "admin" || workspace?.createdBy === args.userId;
+    if (!isWsAdmin) {
+      throw new Error("Only workspace admins can auto-join channels.");
+    }
+
+    const existing = await ctx.db
+      .query("channelMembers")
+      .withIndex("by_channel_and_user", (q) =>
+        q.eq("channelId", args.channelId).eq("userId", args.userId)
+      )
+      .first();
+    if (existing) return existing._id;
+
+    return await ctx.db.insert("channelMembers", {
+      channelId: args.channelId,
+      userId: args.userId,
+      role: "admin",
+    });
   },
 });
 

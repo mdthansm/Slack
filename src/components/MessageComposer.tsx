@@ -50,21 +50,21 @@ export function MessageComposer({ placeholder, channelId, threadId }: Props) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="flex gap-2 items-end">
+    <form onSubmit={handleSubmit} className="flex gap-2 items-center">
       <input
         type="text"
         value={body}
         onChange={(e) => setBody(e.target.value)}
         placeholder={placeholder}
-        className="flex-1 px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+        className="flex-1 px-3 py-2.5 rounded-lg border border-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm bg-white outline-none transition"
         disabled={loading}
       />
       <button
         type="submit"
         disabled={loading || !body.trim()}
-        className="p-3 rounded-xl bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-50 transition"
+        className="p-2.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-30 disabled:cursor-not-allowed transition shrink-0"
       >
-        <Icon name="Send" className="w-5 h-5" />
+        <Icon name="Send" className="w-4 h-4" />
       </button>
     </form>
   );

@@ -27,8 +27,15 @@ type CurrentUserContextType = {
 const CurrentUserContext = createContext<CurrentUserContextType | null>(null);
 
 export function CurrentUserProvider({ children }: { children: React.ReactNode }) {
-  const [userId, setUserId] = useState<Id<"users"> | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [userId, setUserId] = useState<Id<"users"> | null>(() => {
+    if (typeof window === "undefined") return null;
+    const stored = localStorage.getItem(STORAGE_KEY);
+    return stored ? (stored as Id<"users">) : null;
+  });
+  const [isLoading, setIsLoading] = useState(() => {
+    if (typeof window === "undefined") return true;
+    return !!localStorage.getItem(STORAGE_KEY);
+  });
   const [optimisticUser, setOptimisticUser] = useState<Doc<"users"> | null>(null);
   const signUpAction = useAction(api.auth.signUp);
   const signInAction = useAction(api.auth.signIn);
@@ -50,7 +57,10 @@ export function CurrentUserProvider({ children }: { children: React.ReactNode })
   }, [setUserFromStorage]);
 
   useEffect(() => {
-    if (userFromQuery !== undefined) setOptimisticUser(null);
+    if (userFromQuery !== undefined) {
+      setOptimisticUser(null);
+      setIsLoading(false);
+    }
   }, [userFromQuery]);
 
   const signUp = useCallback(

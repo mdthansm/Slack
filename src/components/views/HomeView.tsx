@@ -28,85 +28,76 @@ export function HomeView({ workspaceId, onSelectChannel, onSelectDm }: Props) {
   };
 
   const currentUserName = users.find((u) => u._id === userId)?.name ?? "You";
-  const dmPreviewText = (preview: { lastBody: string | null; lastUserName: string | null }) => {
-    if (!preview.lastBody) return null;
-    return preview.lastUserName === currentUserName ? `You: ${preview.lastBody}` : preview.lastBody;
-  };
 
   return (
     <div className="flex-1 flex flex-col min-h-0 bg-white overflow-hidden">
-      <div className="p-6 sm:p-8 max-w-2xl w-full mx-auto overflow-y-auto">
-        {/* Header */}
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1">Home</h1>
-        <p className="text-sm text-gray-500 mb-8">
-          {channels.length} channel{channels.length !== 1 ? "s" : ""}, {dmPreviews.length} direct message{dmPreviews.length !== 1 ? "s" : ""}
+      <div className="p-6 max-w-2xl w-full mx-auto overflow-y-auto">
+        <h1 className="text-xl font-bold text-gray-900 mb-1">Home</h1>
+        <p className="text-sm text-gray-400 mb-6">
+          {channels.length} channel{channels.length !== 1 ? "s" : ""} &middot; {dmPreviews.length} conversation{dmPreviews.length !== 1 ? "s" : ""}
         </p>
 
-        {/* # CHANNELS */}
-        <section className="mb-10">
-          <h2 className="text-xs font-bold text-gray-700 uppercase tracking-wider mb-4 flex items-center gap-2">
-            <Icon name="Hash" className="w-4 h-4 text-gray-600" />
-            Channels
-          </h2>
-          <ul className="space-y-1">
-            {channels.length === 0 ? (
-              <li className="text-gray-500 text-sm py-2 pl-0">No channels yet. Create one from the sidebar.</li>
-            ) : (
-              channels.map((ch) => (
+        {/* Channels */}
+        <section className="mb-8">
+          <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Channels</h2>
+          {channels.length === 0 ? (
+            <p className="text-gray-400 text-sm py-2">No channels yet.</p>
+          ) : (
+            <ul className="space-y-px">
+              {channels.map((ch) => (
                 <li key={ch._id}>
                   <button
                     onClick={() => onSelectChannel(ch._id)}
-                    className="w-full flex items-center gap-2 px-0 py-2.5 text-left text-gray-900 hover:text-gray-700 transition rounded-md hover:bg-gray-50 -ml-0.5 pl-0.5"
+                    className="w-full flex items-center gap-2 px-3 py-2 text-left text-gray-700 hover:bg-gray-50 rounded-md transition text-sm"
                   >
-                    {ch.isPrivate === true ? (
-                      <Icon name="Lock" className="w-4 h-4 text-gray-500 shrink-0" />
+                    {ch.isPrivate ? (
+                      <Icon name="Lock" className="w-3.5 h-3.5 text-gray-400 shrink-0" />
                     ) : (
-                      <Icon name="Hash" className="w-4 h-4 text-gray-500 shrink-0" />
+                      <Icon name="Hash" className="w-3.5 h-3.5 text-gray-400 shrink-0" />
                     )}
                     <span className="font-medium">{ch.name}</span>
                   </button>
                 </li>
-              ))
-            )}
-          </ul>
+              ))}
+            </ul>
+          )}
         </section>
 
-        {/* DIRECT MESSAGES — card-style entries */}
+        {/* Direct messages */}
         <section>
-          <h2 className="text-xs font-bold text-gray-700 uppercase tracking-wider mb-4 flex items-center gap-2">
-            <Icon name="UserGroup" className="w-4 h-4 text-gray-600" />
-            Direct messages
-          </h2>
-          <ul className="space-y-3">
-            {dmPreviews.length === 0 ? (
-              <li className="text-gray-500 text-sm py-3 pl-0">No direct messages yet. Start one from the sidebar.</li>
-            ) : (
-              dmPreviews.map((preview) => {
+          <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Direct messages</h2>
+          {dmPreviews.length === 0 ? (
+            <p className="text-gray-400 text-sm py-2">No conversations yet.</p>
+          ) : (
+            <ul className="space-y-1">
+              {dmPreviews.map((preview) => {
                 const names = getDmNames(preview.participantIds);
-                const previewText = dmPreviewText(preview);
+                const snippet = preview.lastBody
+                  ? preview.lastUserName === currentUserName
+                    ? `You: ${preview.lastBody}`
+                    : preview.lastBody
+                  : null;
                 return (
                   <li key={preview.threadId}>
                     <button
                       onClick={() => onSelectDm(preview.threadId)}
-                      className="w-full flex items-start gap-4 p-4 rounded-xl text-left bg-gray-50 hover:bg-gray-100 border border-gray-100 hover:border-gray-200 transition shadow-sm hover:shadow"
+                      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-left hover:bg-gray-50 transition"
                     >
-                      <div className="w-11 h-11 rounded-full bg-purple-500 flex items-center justify-center text-white text-base font-bold shrink-0">
+                      <div className="w-8 h-8 rounded-full bg-green-700 flex items-center justify-center text-white text-xs font-bold shrink-0">
                         {names[0]?.toUpperCase() ?? "?"}
                       </div>
-                      <div className="min-w-0 flex-1 pt-0.5">
-                        <p className="font-semibold text-gray-900 truncate">{names}</p>
-                        {previewText ? (
-                          <p className="text-sm text-gray-500 truncate mt-0.5">{previewText}</p>
-                        ) : (
-                          <p className="text-sm text-gray-400 italic mt-0.5">No messages yet</p>
+                      <div className="min-w-0 flex-1">
+                        <p className="font-medium text-gray-900 text-sm truncate">{names}</p>
+                        {snippet && (
+                          <p className="text-xs text-gray-400 truncate mt-0.5">{snippet}</p>
                         )}
                       </div>
                     </button>
                   </li>
                 );
-              })
-            )}
-          </ul>
+              })}
+            </ul>
+          )}
         </section>
       </div>
     </div>

@@ -7,10 +7,10 @@ import { SlackLayout } from "@/components/SlackLayout";
 export default function Home() {
   const { user, isLoading } = useCurrentUser();
 
-  if (isLoading) {
+  if (isLoading && !user) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
-        <div className="animate-pulse text-white text-lg">Loading...</div>
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-gray-400 text-sm">Loading...</div>
       </div>
     );
   }
