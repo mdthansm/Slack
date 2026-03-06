@@ -49,9 +49,7 @@ export const sendInvite = action({
       auth: { user: smtpUser, pass: smtpPass },
     });
 
-    const signUpUrl = process.env.NEXT_PUBLIC_CONVEX_SITE_URL
-      ? process.env.NEXT_PUBLIC_CONVEX_SITE_URL.replace(".convex.site", "")
-      : "http://localhost:3000";
+    const signUpUrl = process.env.APP_URL || "http://localhost:3000";
 
     const roleLabel = args.role === "admin" ? "an Admin" : "a Member";
 
