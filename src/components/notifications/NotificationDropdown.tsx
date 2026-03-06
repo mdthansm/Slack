@@ -1,0 +1,188 @@
+"use client";
+
+import { useState, useRef, useEffect, useCallback } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Icon } from "@/components/icons/FontAwesomeIcons";
+import { useQuery, useMutation } from "convex/react";
+import { api } from "../../../convex/_generated/api";
+import type { Id } from "../../../convex/_generated/dataModel";
+
+type Props = {
+  userId: Id<"users"> | null;
+  workspaceId: Id<"workspaces"> | null;
+  onAcceptedChannel?: (channelId: Id<"channels">) => void;
+};
+
+export function NotificationBell({ userId, workspaceId, onAcceptedChannel }: Props) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  const channelInvites =
+    useQuery(
+      api.channels.listPendingInvites,
+      userId && workspaceId ? { userId, workspaceId } : "skip"
+    ) ?? [];
+
+  const acceptChannelInvite = useMutation(api.channels.acceptInvite);
+  const declineChannelInvite = useMutation(api.channels.declineInvite);
+  const [processingId, setProcessingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const onClickOutside = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", onClickOutside);
+    return () => document.removeEventListener("mousedown", onClickOutside);
+  }, []);
+
+  const handleAcceptChannel = useCallback(
+    async (inviteId: Id<"channelInvites">) => {
+      setProcessingId(inviteId);
+      try {
+        const channelId = await acceptChannelInvite({ inviteId });
+        onAcceptedChannel?.(channelId);
+      } catch {
+        /* */
+      } finally {
+        setProcessingId(null);
+      }
+    },
+    [acceptChannelInvite, onAcceptedChannel]
+  );
+
+  const handleDeclineChannel = useCallback(
+    async (inviteId: Id<"channelInvites">) => {
+      setProcessingId(inviteId);
+      try {
+        await declineChannelInvite({ inviteId });
+      } catch {
+        /* */
+      } finally {
+        setProcessingId(null);
+      }
+    },
+    [declineChannelInvite]
+  );
+
+  const totalCount = channelInvites.length;
+
+  function timeAgo(ts: number) {
+    const diff = Date.now() - ts;
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return "just now";
+    if (mins < 60) return `${mins}m ago`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return `${hrs}h ago`;
+    return `${Math.floor(hrs / 24)}d ago`;
+  }
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="p-2 rounded-lg hover:bg-gray-100 text-gray-600 transition relative"
+        title="Notifications"
+      >
+        <Icon name="Bell" className="w-4 h-4" />
+        {totalCount > 0 && (
+          <span className="absolute -top-0.5 -right-0.5 flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold leading-none shadow-sm">
+            {totalCount > 9 ? "9+" : totalCount}
+          </span>
+        )}
+      </button>
+
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, y: -8, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -8, scale: 0.95 }}
+            transition={{ duration: 0.15 }}
+            className="absolute right-0 top-full mt-2 w-80 sm:w-96 bg-white rounded-xl shadow-2xl border border-gray-200 z-50 overflow-hidden"
+          >
+            <div className="px-4 py-3 border-b border-gray-100">
+              <h3 className="text-sm font-semibold text-gray-900">
+                Notifications
+              </h3>
+            </div>
+
+            <div className="max-h-96 overflow-y-auto">
+              {totalCount === 0 ? (
+                <div className="flex flex-col items-center justify-center py-10 px-4">
+                  <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center mb-3">
+                    <Icon name="Bell" className="w-5 h-5 text-gray-400" />
+                  </div>
+                  <p className="text-sm text-gray-500 font-medium">
+                    All caught up!
+                  </p>
+                  <p className="text-xs text-gray-400 mt-1">
+                    No pending invites right now.
+                  </p>
+                </div>
+              ) : (
+                <ul>
+                  {channelInvites.map((inv) => {
+                    if (!inv) return null;
+                    const isProcessing = processingId === inv._id;
+                    return (
+                      <li
+                        key={inv._id}
+                        className="px-4 py-3 border-b border-gray-50 last:border-b-0 hover:bg-gray-50/50 transition"
+                      >
+                        <div className="flex items-start gap-3">
+                          <div className="shrink-0 mt-0.5 w-9 h-9 rounded-full bg-purple-100 flex items-center justify-center">
+                            <Icon
+                              name="Envelope"
+                              className="w-4 h-4 text-purple-600"
+                            />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm text-gray-900">
+                              <span className="font-semibold">
+                                {inv.invitedByName}
+                              </span>{" "}
+                              invited you to channel{" "}
+                              <span className="font-semibold text-purple-700">
+                                #{inv.channelName}
+                              </span>
+                            </p>
+                            <p className="text-xs text-gray-400 mt-0.5">
+                              {timeAgo(inv.createdAt)}
+                            </p>
+                            <div className="flex items-center gap-2 mt-2">
+                              <button
+                                type="button"
+                                onClick={() => handleAcceptChannel(inv._id)}
+                                disabled={isProcessing}
+                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-purple-600 text-white text-xs font-medium hover:bg-purple-700 disabled:opacity-50 transition"
+                              >
+                                <Icon name="Check" className="w-3 h-3" />
+                                Accept
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDeclineChannel(inv._id)}
+                                disabled={isProcessing}
+                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 text-xs font-medium hover:bg-gray-100 disabled:opacity-50 transition"
+                              >
+                                <Icon name="X" className="w-3 h-3" />
+                                Decline
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
