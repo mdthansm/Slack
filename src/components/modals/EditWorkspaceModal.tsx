@@ -181,7 +181,7 @@ export function EditWorkspaceModal({
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -193,7 +193,7 @@ export function EditWorkspaceModal({
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.95 }}
-          className="relative w-full max-w-lg bg-white rounded-xl shadow-xl max-h-[90vh] overflow-y-auto"
+          className="relative w-full max-w-lg bg-white rounded-t-2xl sm:rounded-2xl shadow-xl max-h-[90vh] overflow-y-auto"
         >
           {/* Header */}
           <div className="sticky top-0 bg-white z-10 px-6 pt-5 pb-3 border-b border-gray-100">
@@ -204,7 +204,7 @@ export function EditWorkspaceModal({
               <button
                 type="button"
                 onClick={onClose}
-                className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400"
+                className="p-1.5 rounded-lg hover:bg-gray-100 active:bg-gray-200 text-gray-400"
               >
                 <Icon name="X" className="w-4 h-4" />
               </button>
@@ -227,7 +227,7 @@ export function EditWorkspaceModal({
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="Workspace name"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  className="w-full px-3 py-3 sm:py-2.5 border border-gray-300 rounded-lg text-base sm:text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent transition"
                 />
               </div>
               <div>
@@ -243,7 +243,7 @@ export function EditWorkspaceModal({
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder="Short description"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  className="w-full px-3 py-3 sm:py-2.5 border border-gray-300 rounded-lg text-base sm:text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent transition"
                 />
               </div>
               {error && <p className="text-sm text-red-600">{error}</p>}
@@ -251,7 +251,7 @@ export function EditWorkspaceModal({
                 <button
                   type="submit"
                   disabled={loading}
-                  className="px-4 py-2 rounded-lg bg-purple-600 text-white text-sm font-medium hover:bg-purple-700 disabled:opacity-50"
+                  className="px-4 py-2.5 sm:py-2 rounded-lg bg-purple-600 text-white text-sm font-medium hover:bg-purple-700 disabled:opacity-50"
                 >
                   {loading ? "Saving..." : "Save"}
                 </button>

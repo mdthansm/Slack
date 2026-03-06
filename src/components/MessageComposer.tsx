@@ -28,21 +28,9 @@ export function MessageComposer({ placeholder, channelId, threadId }: Props) {
     setLoading(true);
     try {
       if (channelId) {
-        await sendChannel({
-          channelId,
-          userId,
-          body: trimmed,
-          userName: user.name,
-          userImageUrl: user.imageUrl ?? "",
-        });
+        await sendChannel({ channelId, userId, body: trimmed, userName: user.name, userImageUrl: user.imageUrl ?? "" });
       } else if (threadId) {
-        await sendDm({
-          threadId,
-          userId,
-          body: trimmed,
-          userName: user.name,
-          userImageUrl: user.imageUrl ?? "",
-        });
+        await sendDm({ threadId, userId, body: trimmed, userName: user.name, userImageUrl: user.imageUrl ?? "" });
       }
     } finally {
       setLoading(false);
@@ -56,13 +44,13 @@ export function MessageComposer({ placeholder, channelId, threadId }: Props) {
         value={body}
         onChange={(e) => setBody(e.target.value)}
         placeholder={placeholder}
-        className="flex-1 px-3 py-2.5 rounded-lg border border-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm bg-white outline-none transition"
+        className="flex-1 min-w-0 px-3 py-2.5 sm:py-2 rounded-lg border border-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm bg-white outline-none transition"
         disabled={loading}
       />
       <button
         type="submit"
         disabled={loading || !body.trim()}
-        className="p-2.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-30 disabled:cursor-not-allowed transition shrink-0"
+        className="p-2.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 active:bg-blue-800 disabled:opacity-30 disabled:cursor-not-allowed transition shrink-0"
       >
         <Icon name="Send" className="w-4 h-4" />
       </button>

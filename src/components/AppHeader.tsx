@@ -22,21 +22,21 @@ export function AppHeader({ workspaceId, onMenuClick, onSelectChannel }: Props) 
   const searchPlaceholder = workspace?.name ? `Search ${workspace.name}` : "Search";
 
   return (
-    <header className="h-11 px-3 flex items-center gap-3 border-b border-gray-100 bg-white shrink-0">
+    <header className="h-12 px-2 sm:px-3 flex items-center gap-2 border-b border-gray-100 bg-white shrink-0">
       {onMenuClick && (
         <button
           type="button"
           onClick={onMenuClick}
-          className="md:hidden p-1.5 rounded hover:bg-gray-100 text-gray-500 transition"
+          className="md:hidden p-2.5 rounded-lg hover:bg-gray-100 active:bg-gray-200 text-gray-500 transition"
           aria-label="Open menu"
         >
-          <Icon name="Bars" className="w-4 h-4" />
+          <Icon name="Bars" className="w-5 h-5" />
         </button>
       )}
 
       <div className="flex-1 min-w-0 max-w-md">
-        <div className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-gray-50 border border-gray-200 focus-within:bg-white focus-within:border-gray-300 transition">
-          <Icon name="Search" className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+        <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-50 border border-gray-200 focus-within:bg-white focus-within:border-gray-300 transition">
+          <Icon name="Search" className="w-4 h-4 text-gray-400 shrink-0" />
           <input
             type="search"
             placeholder={searchPlaceholder}

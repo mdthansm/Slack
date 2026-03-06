@@ -57,7 +57,7 @@ export function CreateChannelModal({
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -70,13 +70,13 @@ export function CreateChannelModal({
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.95 }}
           onClick={(e) => e.stopPropagation()}
-          className="relative w-full max-w-md bg-white rounded-2xl shadow-xl p-6"
+          className="relative w-full max-w-md bg-white rounded-t-2xl sm:rounded-2xl shadow-xl p-5 sm:p-6 max-h-[90vh] overflow-y-auto"
         >
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-xl font-bold text-gray-900">Create channel</h2>
             <button
               onClick={onClose}
-              className="p-2 rounded-lg hover:bg-gray-100 transition"
+              className="p-2 rounded-lg hover:bg-gray-100 active:bg-gray-200 transition"
             >
               <Icon name="X" className="w-5 h-5" />
             </button>
@@ -91,7 +91,7 @@ export function CreateChannelModal({
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="e.g. general"
-                className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                className="w-full px-4 py-3 sm:py-2.5 rounded-xl border border-gray-200 text-base sm:text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent transition"
               />
               <p className="text-xs text-gray-500 mt-1">
                 Lowercase, no spaces (e.g. general, random).
@@ -106,7 +106,7 @@ export function CreateChannelModal({
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="What's this channel about?"
-                className="w-full px-4 py-2 rounded-xl border border-gray-200 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                className="w-full px-4 py-3 sm:py-2.5 rounded-xl border border-gray-200 text-base sm:text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent transition"
               />
             </div>
             {error && <p className="text-sm text-red-600">{error}</p>}
@@ -114,14 +114,14 @@ export function CreateChannelModal({
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2 rounded-xl border border-gray-200 hover:bg-gray-50"
+                className="px-4 py-2.5 sm:py-2 rounded-xl border border-gray-200 hover:bg-gray-50"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={loading || !workspaceId}
-                className="px-4 py-2 rounded-xl bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-50"
+                className="px-4 py-2.5 sm:py-2 rounded-xl bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-50"
               >
                 {loading ? "Creating..." : "Create"}
               </button>

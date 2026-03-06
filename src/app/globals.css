@@ -3,31 +3,59 @@
 @tailwind utilities;
 
 :root {
-  --sidebar: #3f0e40;
-  --sidebar-hover: #350d36;
+  --sidebar: #1a1d21;
   --sidebar-active: #1164a3;
-  --channel-bg: #350d36;
+}
+
+html, body {
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+  -webkit-text-size-adjust: 100%;
 }
 
 body {
   @apply antialiased bg-white text-gray-900;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
 }
 
-/* Scrollbar styling */
-.custom-scrollbar::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+input, textarea, button {
+  font-size: 16px;
 }
 
-.custom-scrollbar::-webkit-scrollbar-track {
+@media (min-width: 768px) {
+  input, textarea, button {
+    font-size: inherit;
+  }
+}
+
+*::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+*::-webkit-scrollbar-track {
   background: transparent;
 }
 
-.custom-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.2);
-  border-radius: 4px;
+*::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.15);
+  border-radius: 3px;
 }
 
-.custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: rgba(0, 0, 0, 0.3);
+*::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.25);
+}
+
+@media (max-width: 767px) {
+  *::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+  }
+}
+
+@supports (-webkit-touch-callout: none) {
+  .h-screen {
+    height: -webkit-fill-available;
+  }
 }

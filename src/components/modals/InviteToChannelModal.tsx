@@ -134,7 +134,7 @@ export function InviteToChannelModal({
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -146,7 +146,7 @@ export function InviteToChannelModal({
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.95 }}
-          className="relative w-full max-w-md bg-white rounded-xl shadow-xl flex flex-col max-h-[80vh]"
+          className="relative w-full max-w-md bg-white rounded-t-2xl sm:rounded-2xl shadow-xl flex flex-col max-h-[90vh] overflow-y-auto"
         >
           <div className="p-4 border-b border-gray-200">
             <h2 className="text-lg font-semibold text-gray-900">
@@ -167,7 +167,7 @@ export function InviteToChannelModal({
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search by name or email"
-                className="flex-1 bg-transparent outline-none text-gray-900 placeholder-gray-400 text-sm"
+                className="flex-1 bg-transparent outline-none text-gray-900 placeholder-gray-400 text-base sm:text-sm"
               />
             </div>
           </div>
@@ -297,7 +297,7 @@ export function InviteToChannelModal({
             <button
               type="button"
               onClick={onClose}
-              className="w-full py-2 rounded-lg border border-gray-200 text-gray-700 font-medium hover:bg-gray-50 transition"
+              className="w-full py-2.5 sm:py-2 rounded-lg border border-gray-200 text-gray-700 font-medium hover:bg-gray-50 transition"
             >
               Done
             </button>

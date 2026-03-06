@@ -30,6 +30,7 @@ function formatMessageTime(ts: number): string {
 
 export function MessageBubble({ message, isOwn, onEdit, onDelete, canEdit, variant }: Props) {
   const [hovered, setHovered] = useState(false);
+  const [showActions, setShowActions] = useState(false);
   const deleteChannelMsg = useMutation(api.messages.remove);
   const deleteDmMsg = useMutation(api.directMessages.remove);
   const body = message.body ?? (message as { text?: string }).text ?? "";
@@ -48,31 +49,31 @@ export function MessageBubble({ message, isOwn, onEdit, onDelete, canEdit, varia
   };
 
   const parts = (body || "").split(/(@\w+)/g);
+  const actionsVisible = hovered || showActions;
 
   return (
     <div
-      className="group flex gap-3 py-1 px-2 -mx-2 rounded hover:bg-gray-50 transition"
+      className="group flex gap-2.5 py-1.5 px-2 -mx-2 rounded-lg hover:bg-gray-50 transition"
       onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
+      onMouseLeave={() => { setHovered(false); setShowActions(false); }}
+      onTouchEnd={() => { if (canEdit) setShowActions((s) => !s); }}
     >
       <div className="w-8 h-8 rounded-full bg-purple-600 flex items-center justify-center text-white text-sm font-bold shrink-0 mt-0.5">
         {(message.userName ?? "?").charAt(0).toUpperCase()}
       </div>
       <div className="flex-1 min-w-0">
-        <div className="flex items-baseline gap-2">
+        <div className="flex items-baseline gap-2 flex-wrap">
           <span className="font-semibold text-gray-900 text-sm">{message.userName ?? "Unknown"}</span>
-          {time != null && (
-            <span className="text-xs text-gray-400">{time}</span>
-          )}
-          {hovered && canEdit && (
-            <span className="flex items-center gap-0.5 ml-auto">
+          {time != null && <span className="text-[11px] text-gray-400">{time}</span>}
+          {actionsVisible && canEdit && (
+            <span className="flex items-center gap-1 ml-auto">
               {variant === "channel" && (
-                <button onClick={onEdit} className="p-1 rounded hover:bg-gray-200 transition" title="Edit">
-                  <Icon name="Pencil" className="w-3 h-3 text-gray-400" />
+                <button onClick={onEdit} className="p-1.5 rounded-lg hover:bg-gray-200 active:bg-gray-300 transition" title="Edit">
+                  <Icon name="Pencil" className="w-3.5 h-3.5 text-gray-400" />
                 </button>
               )}
-              <button onClick={handleDelete} className="p-1 rounded hover:bg-red-100 transition" title="Delete">
-                <Icon name="Trash2" className="w-3 h-3 text-red-400" />
+              <button onClick={handleDelete} className="p-1.5 rounded-lg hover:bg-red-100 active:bg-red-200 transition" title="Delete">
+                <Icon name="Trash2" className="w-3.5 h-3.5 text-red-400" />
               </button>
             </span>
           )}

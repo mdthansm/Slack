@@ -56,8 +56,7 @@ export function ChannelView({
   const [editChannelOpen, setEditChannelOpen] = useState(false);
   const [inviteModalOpen, setInviteModalOpen] = useState(false);
   const joinAsAdmin = useMutation(api.channels.joinAsWorkspaceAdmin);
-  const isChannelAdmin =
-    membership?.role === "admin" || userId === channel?.createdBy;
+  const isChannelAdmin = membership?.role === "admin" || userId === channel?.createdBy;
   const [editMessageId, setEditMessageId] = useState<Id<"messages"> | null>(null);
   const [editMessageBody, setEditMessageBody] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -65,19 +64,12 @@ export function ChannelView({
   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
 
   useEffect(() => {
-    if (
-      membership &&
-      "autoJoinNeeded" in membership &&
-      membership.autoJoinNeeded &&
-      userId
-    ) {
+    if (membership && "autoJoinNeeded" in membership && membership.autoJoinNeeded && userId) {
       joinAsAdmin({ channelId, userId }).catch(() => {});
     }
   }, [membership, channelId, userId, joinAsAdmin]);
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
+  const scrollToBottom = () => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
 
   useEffect(() => {
     const el = scrollContainerRef.current;
@@ -94,41 +86,36 @@ export function ChannelView({
   const grouped = useMemo(() => groupMessagesByDate(messages), [messages]);
 
   if (!channel) {
-    return (
-      <div className="flex-1 flex items-center justify-center text-gray-400">
-        Loading channel...
-      </div>
-    );
+    return <div className="flex-1 flex items-center justify-center text-gray-400 text-sm">Loading channel...</div>;
   }
 
   return (
     <div className="flex flex-col h-full min-h-0 bg-white">
       {/* Channel header */}
-      <header className="shrink-0 border-b border-gray-200 bg-white px-4 py-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2 min-w-0">
+      <header className="shrink-0 border-b border-gray-200 bg-white px-3 sm:px-4 py-2.5">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 min-w-0 flex-1">
             {channel.isPrivate ? (
               <Icon name="Lock" className="w-4 h-4 text-gray-400 shrink-0" />
             ) : (
               <Icon name="Hash" className="w-4 h-4 text-gray-400 shrink-0" />
             )}
-            <h1 className="font-semibold text-gray-900 truncate">{channel.name}</h1>
+            <h1 className="font-semibold text-gray-900 truncate text-sm sm:text-base">{channel.name}</h1>
           </div>
-
-          <div className="flex items-center gap-1 shrink-0">
+          <div className="flex items-center gap-0.5 shrink-0">
             <button
               type="button"
               onClick={() => setInviteModalOpen(true)}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md hover:bg-gray-100 text-gray-600 text-sm transition"
+              className="flex items-center gap-1 px-2 py-1.5 sm:px-2.5 rounded-lg hover:bg-gray-100 active:bg-gray-200 text-gray-600 text-sm transition"
               title={isChannelAdmin ? "Manage members" : "View members"}
             >
               <Icon name="UserGroup" className="w-4 h-4" />
-              <span>{channelMembers.length}</span>
+              <span className="text-xs">{channelMembers.length}</span>
             </button>
             {isChannelAdmin && (
               <button
                 onClick={() => setEditChannelOpen(true)}
-                className="p-1.5 rounded-md hover:bg-gray-100 transition"
+                className="p-2 rounded-lg hover:bg-gray-100 active:bg-gray-200 transition hidden sm:block"
                 title="Edit channel"
               >
                 <Icon name="Pencil" className="w-4 h-4 text-gray-500" />
@@ -139,26 +126,20 @@ export function ChannelView({
             )}
           </div>
         </div>
-        {channel.description && (
-          <p className="text-sm text-gray-500 mt-1 truncate">{channel.description}</p>
-        )}
       </header>
 
       {/* Messages */}
-      <div
-        ref={scrollContainerRef}
-        className="flex-1 overflow-y-auto min-h-0 relative bg-white"
-      >
-        <div className="px-4 py-3 space-y-1">
+      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto min-h-0 relative bg-white overscroll-contain">
+        <div className="px-3 sm:px-4 py-2 space-y-1">
           <AnimatePresence initial={false}>
             {grouped.map(({ dateLabel, messages: groupMsgs }) => (
               <div key={dateLabel}>
-                <div className="flex items-center gap-3 py-4">
+                <div className="flex items-center gap-3 py-3">
                   <div className="flex-1 h-px bg-gray-100" />
-                  <span className="text-xs font-medium text-gray-400 px-2">{dateLabel}</span>
+                  <span className="text-[11px] font-medium text-gray-400 px-2 whitespace-nowrap">{dateLabel}</span>
                   <div className="flex-1 h-px bg-gray-100" />
                 </div>
-                <div className="space-y-1">
+                <div className="space-y-0.5">
                   {groupMsgs.map((msg, i) => (
                     <motion.div
                       key={msg._id}
@@ -169,10 +150,7 @@ export function ChannelView({
                       <MessageBubble
                         message={msg}
                         isOwn={msg.userId === userId}
-                        onEdit={() => {
-                          setEditMessageId(msg._id as Id<"messages">);
-                          setEditMessageBody(msg.body ?? msg.text ?? "");
-                        }}
+                        onEdit={() => { setEditMessageId(msg._id as Id<"messages">); setEditMessageBody(msg.body ?? msg.text ?? ""); }}
                         onDelete={() => {}}
                         canEdit={msg.userId === userId}
                         variant="channel"
@@ -185,13 +163,12 @@ export function ChannelView({
           </AnimatePresence>
         </div>
         <div ref={messagesEndRef} />
-
         {showScrollToBottom && (
           <div className="absolute bottom-3 left-0 right-0 flex justify-center pointer-events-none">
             <button
               type="button"
               onClick={scrollToBottom}
-              className="pointer-events-auto flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white border border-gray-200 shadow-sm hover:bg-gray-50 text-xs font-medium text-gray-600 transition"
+              className="pointer-events-auto flex items-center gap-1.5 px-3 py-2 rounded-full bg-white border border-gray-200 shadow-sm hover:bg-gray-50 active:bg-gray-100 text-xs font-medium text-gray-600 transition"
             >
               <Icon name="ChevronDown" className="w-3 h-3" />
               New messages
@@ -201,78 +178,35 @@ export function ChannelView({
       </div>
 
       {/* Composer */}
-      <div className="px-4 py-3 bg-white border-t border-gray-100 shrink-0">
-        <MessageComposer
-          placeholder={`Message #${channel.name}`}
-          channelId={channelId}
-        />
+      <div className="px-3 sm:px-4 py-2.5 bg-white border-t border-gray-100 shrink-0">
+        <MessageComposer placeholder={`Message #${channel.name}`} channelId={channelId} />
       </div>
 
-      <EditChannelModal
-        open={editChannelOpen}
-        onClose={() => setEditChannelOpen(false)}
-        channel={channel}
-        onSaved={() => setEditChannelOpen(false)}
-      />
+      <EditChannelModal open={editChannelOpen} onClose={() => setEditChannelOpen(false)} channel={channel} onSaved={() => setEditChannelOpen(false)} />
       {userId && (
-        <InviteToChannelModal
-          open={inviteModalOpen}
-          onClose={() => setInviteModalOpen(false)}
-          workspaceId={workspaceId}
-          channelId={channelId}
-          channelName={channel.name}
-          addedByUserId={userId ?? undefined}
-          currentUserId={userId ?? undefined}
-          channelCreatedBy={channel.createdBy}
-          isChannelAdmin={isChannelAdmin}
-        />
+        <InviteToChannelModal open={inviteModalOpen} onClose={() => setInviteModalOpen(false)} workspaceId={workspaceId} channelId={channelId} channelName={channel.name} addedByUserId={userId} currentUserId={userId} channelCreatedBy={channel.createdBy} isChannelAdmin={isChannelAdmin} />
       )}
-      <EditMessageModal
-        open={!!editMessageId}
-        onClose={() => setEditMessageId(null)}
-        messageId={editMessageId}
-        initialBody={editMessageBody}
-        onSaved={() => setEditMessageId(null)}
-        variant="channel"
-      />
+      <EditMessageModal open={!!editMessageId} onClose={() => setEditMessageId(null)} messageId={editMessageId} initialBody={editMessageBody} onSaved={() => setEditMessageId(null)} variant="channel" />
     </div>
   );
 }
 
-function DeleteChannelButton({
-  channelId,
-}: {
-  channelId: Id<"channels">;
-  workspaceId: Id<"workspaces">;
-}) {
+function DeleteChannelButton({ channelId }: { channelId: Id<"channels">; workspaceId: Id<"workspaces"> }) {
   const remove = useMutation(api.channels.remove);
   const [confirming, setConfirming] = useState(false);
-
-  const handleDelete = async () => {
-    await remove({ channelId });
-    setConfirming(false);
-    window.location.reload();
-  };
+  const handleDelete = async () => { await remove({ channelId }); setConfirming(false); window.location.reload(); };
 
   if (confirming) {
     return (
       <div className="flex items-center gap-1.5">
         <span className="text-xs text-red-600">Delete?</span>
-        <button onClick={handleDelete} className="px-2 py-1 text-xs bg-red-600 text-white rounded">
-          Yes
-        </button>
-        <button onClick={() => setConfirming(false)} className="px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded">
-          No
-        </button>
+        <button onClick={handleDelete} className="px-2.5 py-1.5 text-xs bg-red-600 text-white rounded-lg">Yes</button>
+        <button onClick={() => setConfirming(false)} className="px-2.5 py-1.5 text-xs bg-gray-100 text-gray-700 rounded-lg">No</button>
       </div>
     );
   }
   return (
-    <button
-      onClick={() => setConfirming(true)}
-      className="p-1.5 rounded-md hover:bg-red-50 transition"
-      title="Delete channel"
-    >
+    <button onClick={() => setConfirming(true)} className="p-2 rounded-lg hover:bg-red-50 active:bg-red-100 transition" title="Delete channel">
       <Icon name="Trash2" className="w-4 h-4 text-red-400" />
     </button>
   );

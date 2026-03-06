@@ -40,7 +40,7 @@ export function BrowseChannelsModal({
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -52,7 +52,7 @@ export function BrowseChannelsModal({
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.95 }}
-          className="relative w-full max-w-md bg-white rounded-xl shadow-xl flex flex-col max-h-[80vh]"
+          className="relative w-full max-w-md bg-white rounded-t-2xl sm:rounded-2xl shadow-xl max-h-[90vh] overflow-y-auto flex flex-col"
         >
           <div className="p-4 border-b border-gray-200 flex items-center gap-2">
             <Icon name="Search" className="w-5 h-5 text-gray-500 shrink-0" />
@@ -61,10 +61,10 @@ export function BrowseChannelsModal({
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search channels"
-              className="flex-1 outline-none text-gray-900 placeholder-gray-400"
+              className="flex-1 outline-none text-gray-900 placeholder-gray-400 text-base sm:text-sm"
               autoFocus
             />
-            <button onClick={onClose} className="p-2 rounded-lg hover:bg-gray-100">
+            <button onClick={onClose} className="p-2 rounded-lg hover:bg-gray-100 active:bg-gray-200">
               <Icon name="X" className="w-5 h-5" />
             </button>
           </div>

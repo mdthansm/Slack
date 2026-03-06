@@ -30,9 +30,9 @@ export function ActivityView({ workspaceId, onSelectChannel }: Props) {
 
   return (
     <div className="flex-1 flex flex-col min-h-0 bg-white overflow-hidden">
-      <div className="p-6 max-w-2xl w-full mx-auto overflow-y-auto">
-        <h1 className="text-xl font-bold text-gray-900 mb-1">Activity</h1>
-        <p className="text-sm text-gray-400 mb-6">Recent messages from your channels</p>
+      <div className="px-4 sm:px-6 py-4 sm:py-6 max-w-2xl w-full mx-auto overflow-y-auto overscroll-contain">
+        <h1 className="text-lg sm:text-xl font-bold text-gray-900 mb-1">Activity</h1>
+        <p className="text-sm text-gray-400 mb-5 sm:mb-6">Recent messages from your channels</p>
 
         {recentMessages.length === 0 ? (
           <div className="text-center py-12 text-gray-400">
@@ -40,19 +40,19 @@ export function ActivityView({ workspaceId, onSelectChannel }: Props) {
             <p className="text-sm mt-1">Join a channel and start chatting.</p>
           </div>
         ) : (
-          <ul className="space-y-1">
+          <ul className="space-y-0.5">
             {recentMessages.map((msg) => (
               <li key={msg._id}>
                 <button
                   onClick={() => onSelectChannel(msg.channelId)}
-                  className="w-full text-left px-3 py-2.5 rounded-md hover:bg-gray-50 transition"
+                  className="w-full text-left px-3 py-2.5 rounded-lg hover:bg-gray-50 active:bg-gray-100 transition"
                 >
-                  <div className="flex items-center gap-2 text-xs text-gray-400 mb-1">
+                  <div className="flex items-center gap-2 text-xs text-gray-400 mb-1 flex-wrap">
                     <span className="font-medium text-gray-600">#{getChannelName(msg.channelId)}</span>
                     <span>&middot;</span>
-                    <span>{msg.userName ?? "Someone"}</span>
+                    <span className="truncate">{msg.userName ?? "Someone"}</span>
                     <span>&middot;</span>
-                    <span>{formatTime(msg._creationTime)}</span>
+                    <span className="whitespace-nowrap">{formatTime(msg._creationTime)}</span>
                   </div>
                   <p className="text-sm text-gray-800 break-words">{msg.body ?? msg.text ?? ""}</p>
                 </button>
