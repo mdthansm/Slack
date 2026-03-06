@@ -12,10 +12,14 @@ export function CreateWorkspaceModal({
   open,
   onClose,
   onCreated,
+  parentWorkspaceId,
+  parentWorkspaceName,
 }: {
   open: boolean;
   onClose: () => void;
   onCreated: (workspaceId: Id<"workspaces">) => void;
+  parentWorkspaceId?: Id<"workspaces"> | null;
+  parentWorkspaceName?: string | null;
 }) {
   const { userId } = useCurrentUser();
   const create = useMutation(api.workspaces.create);
@@ -23,6 +27,8 @@ export function CreateWorkspaceModal({
   const [description, setDescription] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  const isSubWorkspace = !!parentWorkspaceId;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,6 +44,7 @@ export function CreateWorkspaceModal({
         name: name.trim(),
         description: description.trim(),
         createdBy: userId,
+        ...(parentWorkspaceId ? { parentWorkspaceId } : {}),
       });
       setName("");
       setDescription("");
@@ -69,7 +76,9 @@ export function CreateWorkspaceModal({
           className="relative w-full max-w-md bg-white rounded-2xl shadow-xl p-6"
         >
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-bold text-gray-900">Create workspace</h2>
+            <h2 className="text-xl font-bold text-gray-900">
+              {isSubWorkspace ? "Create sub-workspace" : "Create workspace"}
+            </h2>
             <button
               onClick={onClose}
               className="p-2 rounded-lg hover:bg-gray-100 transition"
@@ -78,6 +87,11 @@ export function CreateWorkspaceModal({
             </button>
           </div>
           <form onSubmit={handleSubmit} className="space-y-4">
+            {isSubWorkspace && parentWorkspaceName && (
+              <div className="px-3 py-2 bg-purple-50 rounded-lg text-sm text-purple-700">
+                Creating inside <strong>{parentWorkspaceName}</strong>
+              </div>
+            )}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Name
@@ -116,7 +130,7 @@ export function CreateWorkspaceModal({
                 disabled={loading}
                 className="px-4 py-2 rounded-xl bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-50"
               >
-                {loading ? "Creating..." : "Create"}
+                {loading ? "Creating..." : isSubWorkspace ? "Create sub-workspace" : "Create"}
               </button>
             </div>
           </form>

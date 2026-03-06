@@ -18,7 +18,10 @@ export default defineSchema({
     imageUrl: v.optional(v.string()),
     ownerId: v.optional(v.id("users")),
     createdAt: v.optional(v.number()),
-  }).index("by_created_by", ["createdBy"]),
+    parentWorkspaceId: v.optional(v.id("workspaces")),
+  })
+    .index("by_created_by", ["createdBy"])
+    .index("by_parent", ["parentWorkspaceId"]),
 
   workspaceMembers: defineTable({
     workspaceId: v.id("workspaces"),

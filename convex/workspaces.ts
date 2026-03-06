@@ -9,20 +9,40 @@ export const getInternal = internalQuery({
   },
 });
 
-/** Create a workspace and add creator as admin member. */
+/** Create a workspace and add creator as admin member.
+ *  If parentWorkspaceId is provided, creates a sub-workspace. Only admins of the parent can do this. */
 export const create = mutation({
   args: {
     name: v.string(),
     description: v.string(),
     createdBy: v.id("users"),
     imageUrl: v.optional(v.string()),
+    parentWorkspaceId: v.optional(v.id("workspaces")),
   },
   handler: async (ctx, args) => {
+    if (args.parentWorkspaceId) {
+      const parent = await ctx.db.get(args.parentWorkspaceId);
+      if (!parent) throw new Error("Parent workspace not found");
+
+      const requester = await ctx.db
+        .query("workspaceMembers")
+        .withIndex("by_workspace_and_user", (q) =>
+          q.eq("workspaceId", args.parentWorkspaceId!).eq("userId", args.createdBy)
+        )
+        .first();
+      const isAdmin =
+        requester?.role === "admin" || parent.createdBy === args.createdBy;
+      if (!isAdmin) {
+        throw new Error("Only workspace admins can create sub-workspaces.");
+      }
+    }
+
     const workspaceId = await ctx.db.insert("workspaces", {
       name: args.name,
       description: args.description,
       createdBy: args.createdBy,
       imageUrl: args.imageUrl ?? "",
+      parentWorkspaceId: args.parentWorkspaceId,
     });
     await ctx.db.insert("workspaceMembers", {
       workspaceId,
@@ -41,7 +61,7 @@ export const get = query({
   },
 });
 
-/** List workspaces the user is a member of. */
+/** List top-level workspaces the user is a member of (excludes sub-workspaces). */
 export const listForUser = query({
   args: { userId: v.id("users") },
   handler: async (ctx, args) => {
@@ -52,7 +72,22 @@ export const listForUser = query({
     const workspaces = await Promise.all(
       memberships.map((m) => ctx.db.get(m.workspaceId))
     );
-    return workspaces.filter(Boolean);
+    return workspaces.filter(
+      (w): w is NonNullable<typeof w> => w !== null && !w.parentWorkspaceId
+    );
+  },
+});
+
+/** List sub-workspaces inside a parent workspace. */
+export const listChildren = query({
+  args: { parentWorkspaceId: v.id("workspaces") },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("workspaces")
+      .withIndex("by_parent", (q) =>
+        q.eq("parentWorkspaceId", args.parentWorkspaceId)
+      )
+      .collect();
   },
 });
 

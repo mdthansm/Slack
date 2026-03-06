@@ -94,7 +94,8 @@ export const remove = mutation({
   },
 });
 
-/** Get a user's membership in a channel (role or null if not a member). */
+/** Get a user's membership in a channel (role or null if not a member).
+ *  Workspace admins are treated as channel admins even without an explicit channelMembers row. */
 export const getMembership = query({
   args: {
     channelId: v.id("channels"),
@@ -108,9 +109,27 @@ export const getMembership = query({
         q.eq("channelId", args.channelId).eq("userId", args.userId)
       )
       .first();
-    if (!m) return null;
-    const role = m.role ?? (channel?.createdBy === args.userId ? "admin" : "member");
-    return { role: role as "admin" | "member" };
+    if (m) {
+      const role = m.role ?? (channel?.createdBy === args.userId ? "admin" : "member");
+      return { role: role as "admin" | "member" };
+    }
+
+    if (channel) {
+      const workspace = await ctx.db.get(channel.workspaceId);
+      const wsMembership = await ctx.db
+        .query("workspaceMembers")
+        .withIndex("by_workspace_and_user", (q) =>
+          q.eq("workspaceId", channel.workspaceId).eq("userId", args.userId)
+        )
+        .first();
+      const isWsAdmin =
+        wsMembership?.role === "admin" || workspace?.createdBy === args.userId;
+      if (isWsAdmin) {
+        return { role: "admin" as const };
+      }
+    }
+
+    return null;
   },
 });
 
@@ -174,7 +193,7 @@ export const removeMember = mutation({
   },
 });
 
-/** Send a channel invite to a user. Admin-only. Prevents duplicate pending invites. */
+/** Send a channel invite to a user. Channel admin or workspace admin can invite. Prevents duplicate pending invites. */
 export const inviteMember = mutation({
   args: {
     channelId: v.id("channels"),
@@ -191,11 +210,25 @@ export const inviteMember = mutation({
         q.eq("channelId", args.channelId).eq("userId", args.invitedByUserId)
       )
       .first();
-    const isAdmin =
+    const isChannelAdmin =
       requesterMembership?.role === "admin" ||
       channel.createdBy === args.invitedByUserId;
-    if (!requesterMembership || !isAdmin) {
-      throw new Error("Only channel admins can invite members.");
+
+    let isWsAdmin = false;
+    if (!isChannelAdmin) {
+      const workspace = await ctx.db.get(channel.workspaceId);
+      const wsMembership = await ctx.db
+        .query("workspaceMembers")
+        .withIndex("by_workspace_and_user", (q) =>
+          q.eq("workspaceId", channel.workspaceId).eq("userId", args.invitedByUserId)
+        )
+        .first();
+      isWsAdmin =
+        wsMembership?.role === "admin" || workspace?.createdBy === args.invitedByUserId;
+    }
+
+    if (!isChannelAdmin && !isWsAdmin) {
+      throw new Error("Only channel or workspace admins can invite members.");
     }
 
     const existing = await ctx.db

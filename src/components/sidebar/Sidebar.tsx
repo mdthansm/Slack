@@ -56,6 +56,7 @@ export function Sidebar({
 }: Props) {
   const { userId, user, signOut } = useCurrentUser();
   const [workspaceModal, setWorkspaceModal] = useState(false);
+  const [subWorkspaceModal, setSubWorkspaceModal] = useState(false);
   const [channelModal, setChannelModal] = useState(false);
   const [dmModal, setDmModal] = useState(false);
   const dmOpen = startDmOpen !== undefined ? startDmOpen : dmModal;
@@ -88,10 +89,23 @@ export function Sidebar({
     api.workspaces.listMembers,
     selectedWorkspaceId ? { workspaceId: selectedWorkspaceId } : "skip"
   ) ?? [];
+  const childWorkspaces = useQuery(
+    api.workspaces.listChildren,
+    selectedWorkspaceId ? { parentWorkspaceId: selectedWorkspaceId } : "skip"
+  ) ?? [];
 
-  const currentWorkspace = selectedWorkspaceId
-    ? (workspaces.find((w) => w !== null && w._id === selectedWorkspaceId) ?? null)
-    : null;
+  const selectedWorkspaceDoc = useQuery(
+    api.workspaces.get,
+    selectedWorkspaceId ? { workspaceId: selectedWorkspaceId } : "skip"
+  );
+  const currentWorkspace = selectedWorkspaceDoc ?? null;
+
+  const parentWorkspace = useQuery(
+    api.workspaces.get,
+    currentWorkspace?.parentWorkspaceId
+      ? { workspaceId: currentWorkspace.parentWorkspaceId }
+      : "skip"
+  );
 
   const isWorkspaceAdmin = useMemo(() => {
     if (!userId || !selectedWorkspaceId) return false;
@@ -162,6 +176,17 @@ export function Sidebar({
 
         {/* Main sidebar content */}
         <div className="flex-1 flex flex-col min-w-0 bg-[#3f0e40] overflow-hidden">
+          {/* Back to parent workspace */}
+          {currentWorkspace?.parentWorkspaceId && parentWorkspace && (
+            <button
+              onClick={() => onSelectWorkspace(currentWorkspace.parentWorkspaceId!)}
+              className="flex items-center gap-1.5 px-4 py-1.5 bg-purple-800/40 text-white/80 hover:bg-purple-800/60 text-xs transition shrink-0"
+            >
+              <Icon name="ArrowLeft" className="w-3 h-3" />
+              <span className="truncate">Back to {parentWorkspace.name}</span>
+            </button>
+          )}
+
           {/* Header: workspace name + actions */}
           <div className="h-12 px-2 md:px-3 flex items-center justify-between border-b border-white/10 shrink-0">
             <div className="flex items-center gap-2 min-w-0 flex-1">
@@ -304,6 +329,44 @@ export function Sidebar({
                   </button>
                 </div>
 
+                {/* Sub-workspaces */}
+                {(childWorkspaces.length > 0 || isWorkspaceAdmin) && (
+                  <div className="border-t border-white/10 pt-3 px-3 mt-3">
+                    <div className="flex items-center justify-between px-3 py-1 mb-2">
+                      <div className="flex items-center gap-2">
+                        <Icon name="Folder" className="w-4 h-4 text-white/70" />
+                        <span className="text-sm font-medium">Sub-workspaces</span>
+                      </div>
+                      {isWorkspaceAdmin && (
+                        <button
+                          onClick={() => setSubWorkspaceModal(true)}
+                          className="p-1 rounded hover:bg-white/10 transition"
+                          title="Create sub-workspace"
+                        >
+                          <Icon name="Plus" className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+                    {childWorkspaces.length > 0 ? (
+                      <ul className="space-y-0.5">
+                        {childWorkspaces.map((sw) => (
+                          <li key={sw._id}>
+                            <button
+                              onClick={() => onSelectWorkspace(sw._id)}
+                              className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-left transition hover:bg-white/10 text-white/90"
+                            >
+                              <Icon name="Folder" className="w-3.5 h-3.5 shrink-0" />
+                              <span className="truncate text-sm">{sw.name}</span>
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="text-xs text-white/50 px-3 py-1">No sub-workspaces yet</p>
+                    )}
+                  </div>
+                )}
+
                 {isWorkspaceAdmin && (
                   <div className="border-t border-white/10 pt-3 px-3 mt-3">
                     <button
@@ -428,6 +491,16 @@ export function Sidebar({
         onClose={() => setInviteToSlackOpen(false)}
         userId={userId}
         workspaceId={selectedWorkspaceId}
+      />
+      <CreateWorkspaceModal
+        open={subWorkspaceModal}
+        onClose={() => setSubWorkspaceModal(false)}
+        parentWorkspaceId={selectedWorkspaceId}
+        parentWorkspaceName={currentWorkspace?.name}
+        onCreated={(id) => {
+          onSelectWorkspace(id);
+          setSubWorkspaceModal(false);
+        }}
       />
     </>
   );

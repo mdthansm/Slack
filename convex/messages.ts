@@ -1,7 +1,8 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 
-/** Send a message to a channel. Sender must be a channel member. */
+/** Send a message to a channel. Sender must be a channel member or a workspace admin.
+ *  Workspace admins are auto-added to the channel on first message. */
 export const send = mutation({
   args: {
     channelId: v.id("channels"),
@@ -13,14 +14,36 @@ export const send = mutation({
   handler: async (ctx, args) => {
     if (!args.body.trim()) throw new Error("Message body cannot be empty");
 
-    const membership = await ctx.db
+    let membership = await ctx.db
       .query("channelMembers")
       .withIndex("by_channel_and_user", (q) =>
         q.eq("channelId", args.channelId).eq("userId", args.userId)
       )
       .first();
+
     if (!membership) {
-      throw new Error("You must be a channel member to send messages.");
+      const channel = await ctx.db.get(args.channelId);
+      if (!channel) throw new Error("Channel not found");
+
+      const workspace = await ctx.db.get(channel.workspaceId);
+      const wsMembership = await ctx.db
+        .query("workspaceMembers")
+        .withIndex("by_workspace_and_user", (q) =>
+          q.eq("workspaceId", channel.workspaceId).eq("userId", args.userId)
+        )
+        .first();
+      const isWsAdmin =
+        wsMembership?.role === "admin" || workspace?.createdBy === args.userId;
+
+      if (isWsAdmin) {
+        await ctx.db.insert("channelMembers", {
+          channelId: args.channelId,
+          userId: args.userId,
+          role: "admin",
+        });
+      } else {
+        throw new Error("You must be a channel member to send messages.");
+      }
     }
 
     return await ctx.db.insert("messages", {
@@ -45,23 +68,38 @@ export const listByChannel = query({
   },
 });
 
-/** Recent activity: latest messages from channels the user is in (for this workspace). */
+/** Recent activity: latest messages from channels the user is in (for this workspace).
+ *  Workspace admins see messages from all channels. */
 export const listRecentForUser = query({
   args: { workspaceId: v.id("workspaces"), userId: v.id("users") },
   handler: async (ctx, args) => {
+    const workspace = await ctx.db.get(args.workspaceId);
+    const wsMembership = await ctx.db
+      .query("workspaceMembers")
+      .withIndex("by_workspace_and_user", (q) =>
+        q.eq("workspaceId", args.workspaceId).eq("userId", args.userId)
+      )
+      .first();
+    const isWsAdmin =
+      wsMembership?.role === "admin" || workspace?.createdBy === args.userId;
+
     const channelsInWorkspace = await ctx.db
       .query("channels")
       .withIndex("by_workspace", (q) => q.eq("workspaceId", args.workspaceId))
       .collect();
     const channelIds: import("./_generated/dataModel").Id<"channels">[] = [];
     for (const ch of channelsInWorkspace) {
-      const member = await ctx.db
-        .query("channelMembers")
-        .withIndex("by_channel_and_user", (q) =>
-          q.eq("channelId", ch._id).eq("userId", args.userId)
-        )
-        .first();
-      if (member) channelIds.push(ch._id);
+      if (isWsAdmin) {
+        channelIds.push(ch._id);
+      } else {
+        const member = await ctx.db
+          .query("channelMembers")
+          .withIndex("by_channel_and_user", (q) =>
+            q.eq("channelId", ch._id).eq("userId", args.userId)
+          )
+          .first();
+        if (member) channelIds.push(ch._id);
+      }
     }
     const allMessages: import("./_generated/dataModel").Doc<"messages">[] = [];
     for (const cid of channelIds) {

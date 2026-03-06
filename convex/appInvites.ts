@@ -26,10 +26,15 @@ export const inviteInternal = internalMutation({
     const pendingInvite = await ctx.db
       .query("appInvites")
       .withIndex("by_email", (q) => q.eq("email", normalizedEmail))
-      .filter((q) => q.eq(q.field("status"), "pending"))
+      .filter((q) =>
+        q.and(
+          q.eq(q.field("status"), "pending"),
+          q.eq(q.field("workspaceId"), args.workspaceId)
+        )
+      )
       .first();
     if (pendingInvite) {
-      throw new Error("An invite is already pending for this email.");
+      throw new Error("An invite is already pending for this email in this workspace.");
     }
 
     return await ctx.db.insert("appInvites", {
