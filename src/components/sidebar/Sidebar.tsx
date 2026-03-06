@@ -90,7 +90,7 @@ export function Sidebar({
   ) ?? [];
 
   const currentWorkspace = selectedWorkspaceId
-    ? workspaces.find((w) => w._id === selectedWorkspaceId)
+    ? (workspaces.find((w) => w !== null && w._id === selectedWorkspaceId) ?? null)
     : null;
 
   const isWorkspaceAdmin = useMemo(() => {
@@ -200,16 +200,16 @@ export function Sidebar({
                 exit={{ opacity: 0, y: -8 }}
                 className="absolute left-14 top-12 mt-0 py-1 w-56 bg-[#350d36] rounded-lg shadow-xl border border-white/10 z-50"
               >
-                {workspaces.map((w) => (
+                {workspaces.filter(Boolean).map((w) => (
                   <button
-                    key={w._id}
+                    key={w!._id}
                     onClick={() => {
-                      onSelectWorkspace(w._id);
+                      onSelectWorkspace(w!._id);
                       setWorkspaceDropdown(false);
                     }}
                     className="w-full text-left px-3 py-2 hover:bg-white/10 truncate"
                   >
-                    {w.name}
+                    {w!.name}
                   </button>
                 ))}
                 <button

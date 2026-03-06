@@ -17,12 +17,12 @@ function formatDateDivider(ts: number): string {
   return new Date(ts).toLocaleDateString([], { year: "numeric", month: "long", day: "numeric" });
 }
 
-function groupMessagesByDate(
-  messages: { _id: string; _creationTime: number; [k: string]: unknown }[]
-): { dateLabel: string; messages: typeof messages }[] {
-  const groups: { dateLabel: string; messages: typeof messages }[] = [];
+function groupMessagesByDate<T extends { _id: string; _creationTime: number }>(
+  messages: T[]
+): { dateLabel: string; messages: T[] }[] {
+  const groups: { dateLabel: string; messages: T[] }[] = [];
   let currentDate = "";
-  let currentGroup: typeof messages = [];
+  let currentGroup: T[] = [];
   for (const msg of messages) {
     const dateLabel = formatDateDivider(msg._creationTime);
     if (dateLabel !== currentDate) {
