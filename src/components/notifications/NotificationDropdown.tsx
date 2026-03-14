@@ -79,9 +79,10 @@ export function NotificationBell({ userId, workspaceId, onAcceptedChannel }: Pro
         }
         const registration = await navigator.serviceWorker.register("/sw.js");
         await navigator.serviceWorker.ready;
+        const keyArray = urlBase64ToUint8Array(VAPID_PUBLIC_KEY);
         const subscription = await registration.pushManager.subscribe({
           userVisibleOnly: true,
-          applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+          applicationServerKey: keyArray.buffer as ArrayBuffer,
         });
         const sub = subscription.toJSON();
         if (sub.endpoint && sub.keys?.p256dh && sub.keys?.auth) {
