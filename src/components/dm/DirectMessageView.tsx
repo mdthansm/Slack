@@ -61,6 +61,20 @@ export function DirectMessageView({
     dmIds.length > 0 ? { directMessageIds: dmIds } : "skip"
   );
 
+  const uniqueUserIds = useMemo(() => {
+    const set = new Set<Id<"users">>();
+    for (const m of messages) set.add(m.userId);
+    return Array.from(set);
+  }, [messages]);
+  const onlineMap = useQuery(
+    api.presence.getOnlineUserIds,
+    uniqueUserIds.length > 0 ? { userIds: uniqueUserIds } : "skip"
+  );
+  const statusMap = useQuery(
+    api.status.getStatusForUsers,
+    uniqueUserIds.length > 0 ? { userIds: uniqueUserIds } : "skip"
+  );
+
   const handleForward = async (targetChannelId: Id<"channels">) => {
     if (!forwardingMessageId || !userId || !user) return;
     await forwardMessage({
@@ -113,6 +127,9 @@ export function DirectMessageView({
                         currentUserName={user?.name}
                         onForward={() => setForwardingMessageId(msg._id as Id<"directMessages">)}
                         onReply={(userName, body) => setReplyTo({ userName, body })}
+                        isOnline={onlineMap?.[msg.userId]}
+                        userStatus={statusMap?.[msg.userId] ?? undefined}
+                        currentUserImageUrl={user?.imageUrl}
                       />
                     </motion.div>
                   ))}

@@ -11,9 +11,10 @@ type Props = {
   workspaceId: Id<"workspaces"> | null;
   onMenuClick?: () => void;
   onSelectChannel?: (channelId: Id<"channels">) => void;
+  onProfileClick?: () => void;
 };
 
-export function AppHeader({ workspaceId, onMenuClick, onSelectChannel }: Props) {
+export function AppHeader({ workspaceId, onMenuClick, onSelectChannel, onProfileClick }: Props) {
   const { userId } = useCurrentUser();
   const workspace = useQuery(
     api.workspaces.get,
@@ -50,6 +51,17 @@ export function AppHeader({ workspaceId, onMenuClick, onSelectChannel }: Props) 
         workspaceId={workspaceId}
         onAcceptedChannel={onSelectChannel}
       />
+      {userId && onProfileClick && (
+        <button
+          type="button"
+          onClick={onProfileClick}
+          className="p-2.5 rounded-lg hover:bg-gray-100 active:bg-gray-200 text-gray-600 transition"
+          aria-label="Open profile"
+          title="Profile"
+        >
+          <Icon name="User" className="w-5 h-5 sm:w-4 sm:h-4" />
+        </button>
+      )}
     </header>
   );
 }

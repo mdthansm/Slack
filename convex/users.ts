@@ -193,3 +193,15 @@ export const update = mutation({
     return userId;
   },
 });
+
+export const updateProfileImage = mutation({
+  args: {
+    userId: v.id("users"),
+    storageId: v.id("_storage"),
+  },
+  handler: async (ctx, args) => {
+    const url = await ctx.storage.getUrl(args.storageId);
+    if (!url) throw new Error("Failed to get image URL");
+    await ctx.db.patch(args.userId, { imageUrl: url });
+  },
+});

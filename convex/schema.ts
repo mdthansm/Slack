@@ -10,6 +10,9 @@ export default defineSchema({
     passwordHash: v.optional(v.string()),
     stackAuthId: v.optional(v.string()),
     createdAt: v.optional(v.number()),
+    statusEmoji: v.optional(v.string()),
+    statusText: v.optional(v.string()),
+    statusExpiry: v.optional(v.number()),
   })
     .index("by_email", ["email"])
     .index("by_stack_auth_id", ["stackAuthId"]),
@@ -136,6 +139,12 @@ export default defineSchema({
   })
     .index("by_target_channel", ["targetChannelId"])
     .index("by_target_thread", ["targetThreadId"]),
+
+  presence: defineTable({
+    userId: v.id("users"),
+    lastSeen: v.number(),
+  })
+    .index("by_user", ["userId"]),
 
   pushSubscriptions: defineTable({
     userId: v.id("users"),

@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Icon } from "@/components/icons/FontAwesomeIcons";
 import { useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
 import { useCurrentUser } from "@/context/CurrentUserContext";
+import { ProfilePopup } from "../ProfilePopup";
 import { CreateWorkspaceModal } from "../modals/CreateWorkspaceModal";
 import { CreateChannelModal } from "../modals/CreateChannelModal";
 import { StartDmModal } from "../modals/StartDmModal";
@@ -24,35 +25,42 @@ type LeftNav = "home" | "dms" | "activity" | "files";
 
 type Props = {
   selectedWorkspaceId: Id<"workspaces"> | null;
-  onSelectWorkspace: (id: Id<"workspaces">) => void;
+  onSelectWorkspaceAction: (id: Id<"workspaces">) => void;
   selected: Selected;
-  onSelectChannel: (id: Id<"channels">) => void;
-  onSelectDm: (id: Id<"directMessageThreads">) => void;
-  onSelectHome: () => void;
+  onSelectChannelAction: (id: Id<"channels">) => void;
+  onSelectDmAction: (id: Id<"directMessageThreads">) => void;
+  onSelectHomeAction: () => void;
   leftNavActive: LeftNav;
-  onLeftNavChange: (nav: LeftNav) => void;
+  onLeftNavChangeAction: (nav: LeftNav) => void;
   mobileOpen?: boolean;
   onMobileClose?: () => void;
   startDmOpen?: boolean;
   onStartDmOpen?: () => void;
   onStartDmClose?: () => void;
+  onProfileClick?: () => void;
 };
 
 export function Sidebar({
   selectedWorkspaceId,
-  onSelectWorkspace,
+  onSelectWorkspaceAction,
   selected,
-  onSelectChannel,
-  onSelectDm,
-  onSelectHome,
+  onSelectChannelAction,
+  onSelectDmAction,
+  onSelectHomeAction,
   leftNavActive,
-  onLeftNavChange,
+  onLeftNavChangeAction,
   mobileOpen = false,
   onMobileClose,
   startDmOpen,
   onStartDmOpen,
   onStartDmClose,
+  onProfileClick,
 }: Props) {
+  const onSelectWorkspace = onSelectWorkspaceAction;
+  const onSelectChannel = onSelectChannelAction;
+  const onSelectDm = onSelectDmAction;
+  const onSelectHome = onSelectHomeAction;
+  const onLeftNavChange = onLeftNavChangeAction;
   const { userId, user, signOut } = useCurrentUser();
   const [workspaceModal, setWorkspaceModal] = useState(false);
   const [subWorkspaceModal, setSubWorkspaceModal] = useState(false);
@@ -67,6 +75,39 @@ export function Sidebar({
   const [editWorkspaceOpen, setEditWorkspaceOpen] = useState(false);
   const [inviteToSlackOpen, setInviteToSlackOpen] = useState(false);
   const [workspaceDropdown, setWorkspaceDropdown] = useState(false);
+  const [showProfile, setShowProfile] = useState(false);
+  const profileRef = useRef<HTMLDivElement>(null);
+  const hideProfileTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const showProfileTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const statusModalOpenRef = useRef(false);
+
+  const onlineMap = useQuery(
+    api.presence.getOnlineUserIds,
+    userId ? { userIds: [userId] } : "skip"
+  );
+  const statusMap = useQuery(
+    api.status.getStatusForUsers,
+    userId ? { userIds: [userId] } : "skip"
+  );
+  const isOnline = userId ? onlineMap?.[userId] : false;
+  const userStatus = userId ? statusMap?.[userId] ?? null : null;
+
+  const handleProfileMouseEnter = useCallback(() => {
+    if (showProfileTimeoutRef.current) clearTimeout(showProfileTimeoutRef.current);
+    if (hideProfileTimeoutRef.current) {
+      clearTimeout(hideProfileTimeoutRef.current);
+      hideProfileTimeoutRef.current = null;
+    }
+    showProfileTimeoutRef.current = setTimeout(() => setShowProfile(true), 200);
+  }, []);
+  const handleProfileMouseLeave = useCallback(() => {
+    if (statusModalOpenRef.current) return;
+    if (showProfileTimeoutRef.current) {
+      clearTimeout(showProfileTimeoutRef.current);
+      showProfileTimeoutRef.current = null;
+    }
+    hideProfileTimeoutRef.current = setTimeout(() => setShowProfile(false), 300);
+  }, []);
 
   const workspaces = useQuery(
     api.workspaces.listForUser,
@@ -159,7 +200,7 @@ export function Sidebar({
                 {currentWorkspace?.name?.charAt(0).toUpperCase() ?? "S"}
               </div>
               <span className="font-semibold text-sm truncate">
-                {currentWorkspace?.name ?? "Select workspace"}
+                {currentWorkspace?.name ?? ""}
               </span>
               <Icon name="ChevronDown" className="w-3 h-3 shrink-0 text-white/60" />
             </button>
@@ -398,12 +439,19 @@ export function Sidebar({
 
         {/* User footer */}
         <div className="px-3 py-2.5 border-t border-white/10 flex items-center gap-2.5 shrink-0">
-          <div className="w-8 h-8 rounded-full bg-purple-600 flex items-center justify-center text-xs font-bold shrink-0">
-            {user?.name?.charAt(0).toUpperCase() ?? "?"}
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium truncate">{user?.name ?? "User"}</p>
-            <p className="text-[11px] text-white/40 truncate">{user?.email}</p>
+          <div
+            ref={profileRef}
+            className="flex items-center gap-2.5 flex-1 min-w-0 cursor-pointer"
+            onMouseEnter={handleProfileMouseEnter}
+            onMouseLeave={handleProfileMouseLeave}
+          >
+            <div className="w-8 h-8 rounded-full bg-purple-600 flex items-center justify-center text-xs font-bold shrink-0">
+              {user?.name?.charAt(0).toUpperCase() ?? "?"}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium truncate">{user?.name ?? "User"}</p>
+              <p className="text-[11px] text-white/40 truncate">{user?.email}</p>
+            </div>
           </div>
           <button
             onClick={signOut}
@@ -413,6 +461,32 @@ export function Sidebar({
             <Icon name="LogOut" className="w-4 h-4" />
           </button>
         </div>
+
+        {showProfile && userId && user && (
+          <ProfilePopup
+            userName={user.name}
+            imageUrl={user.imageUrl}
+            isOnline={!!isOnline}
+            status={userStatus}
+            isSelf
+            userId={userId}
+            onCloseAction={() => setShowProfile(false)}
+            anchorRect={profileRef.current?.getBoundingClientRect() ?? null}
+            placeAbove
+            onMouseEnter={() => {
+              if (hideProfileTimeoutRef.current) {
+                clearTimeout(hideProfileTimeoutRef.current);
+                hideProfileTimeoutRef.current = null;
+              }
+            }}
+            onMouseLeave={() => {
+              if (statusModalOpenRef.current) return;
+              hideProfileTimeoutRef.current = setTimeout(() => setShowProfile(false), 300);
+            }}
+            onStatusModalOpenChange={(open) => { statusModalOpenRef.current = open; }}
+            onProfileClick={onProfileClick}
+          />
+        )}
       </aside>
 
       {/* Modals */}

@@ -16,7 +16,10 @@ import type * as email from "../email.js";
 import type * as files from "../files.js";
 import type * as messages from "../messages.js";
 import type * as notifications from "../notifications.js";
+import type * as presence from "../presence.js";
 import type * as reactions from "../reactions.js";
+import type * as sendPush from "../sendPush.js";
+import type * as status from "../status.js";
 import type * as users from "../users.js";
 import type * as workspaces from "../workspaces.js";
 
@@ -35,7 +38,10 @@ declare const fullApi: ApiFromModules<{
   files: typeof files;
   messages: typeof messages;
   notifications: typeof notifications;
+  presence: typeof presence;
   reactions: typeof reactions;
+  sendPush: typeof sendPush;
+  status: typeof status;
   users: typeof users;
   workspaces: typeof workspaces;
 }>;

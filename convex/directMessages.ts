@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
+import { internal } from "./_generated/api";
 
 export const getOrCreateThread = mutation({
   args: {
@@ -87,7 +88,8 @@ export const send = mutation({
     if (!args.body.trim() && !args.fileStorageId) {
       throw new Error("Message body or file is required");
     }
-    return await ctx.db.insert("directMessages", {
+    const thread = await ctx.db.get(args.threadId);
+    const messageId = await ctx.db.insert("directMessages", {
       threadId: args.threadId,
       userId: args.userId,
       body: args.body.trim() || (args.fileName ? `📎 ${args.fileName}` : ""),
@@ -98,6 +100,22 @@ export const send = mutation({
       fileType: args.fileType,
       fileSize: args.fileSize,
     });
+
+    if (thread) {
+      const recipientUserIds = thread.participantIds.filter((id) => id !== args.userId);
+      if (recipientUserIds.length > 0) {
+        const bodyText =
+          args.body.trim() || (args.fileName ? `📎 ${args.fileName}` : "New message");
+        await ctx.scheduler.runAfter(0, internal.sendPush.sendPushToUsers, {
+          recipientUserIds,
+          title: args.userName,
+          body: bodyText,
+          url: "/",
+        });
+      }
+    }
+
+    return messageId;
   },
 });
 

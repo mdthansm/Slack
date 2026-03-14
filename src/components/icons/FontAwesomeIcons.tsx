@@ -46,6 +46,8 @@ import {
   faBellSlash,
   faImage,
   faReply,
+  faUser,
+  faCircleQuestion,
 } from "@fortawesome/free-solid-svg-icons";
 
 const icons = {
@@ -93,6 +95,8 @@ const icons = {
   BellSlash: faBellSlash,
   Image: faImage,
   Reply: faReply,
+  User: faUser,
+  CircleQuestion: faCircleQuestion,
 } as const;
 
 type IconName = keyof typeof icons;

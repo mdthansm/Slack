@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useMutation, useQuery } from "convex/react";
 import { Sidebar } from "@/components/sidebar/Sidebar";
 import { ChannelView } from "@/components/channel/ChannelView";
 import { DirectMessageView } from "@/components/dm/DirectMessageView";
@@ -10,7 +11,9 @@ import { ActivityView } from "@/components/views/ActivityView";
 import { FilesView } from "@/components/views/FilesView";
 import { AppHeader } from "@/components/AppHeader";
 import { BrowserNotifier } from "@/components/notifications/BrowserNotifier";
+import { ProfilePanel } from "@/components/ProfilePanel";
 import { useCurrentUser } from "@/context/CurrentUserContext";
+import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 
 type Selected = { type: "channel"; channelId: Id<"channels"> } | { type: "dm"; threadId: Id<"directMessageThreads"> };
@@ -23,6 +26,44 @@ export function SlackLayout() {
   const [leftNavActive, setLeftNavActive] = useState<LeftNav>("home");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [startDmOpen, setStartDmOpen] = useState(false);
+  const [profilePanelOpen, setProfilePanelOpen] = useState(false);
+
+  const presenceHeartbeat = useMutation(api.presence.heartbeat);
+  const heartbeatRef = useRef(false);
+  const workspaces = useQuery(
+    api.workspaces.listForUser,
+    userId ? { userId } : "skip"
+  ) ?? [];
+  const user = useQuery(api.users.get, userId ? { userId } : "skip");
+  const onlineMap = useQuery(
+    api.presence.getOnlineUserIds,
+    userId ? { userIds: [userId] } : "skip"
+  );
+  const statusMap = useQuery(
+    api.status.getStatusForUsers,
+    userId ? { userIds: [userId] } : "skip"
+  );
+  const isOnline = userId ? onlineMap?.[userId] : false;
+  const userStatus = userId ? statusMap?.[userId] ?? null : null;
+
+  useEffect(() => {
+    if (!userId || heartbeatRef.current) return;
+    heartbeatRef.current = true;
+    presenceHeartbeat({ userId });
+    const interval = setInterval(() => {
+      presenceHeartbeat({ userId });
+    }, 30_000);
+    return () => { clearInterval(interval); heartbeatRef.current = false; };
+  }, [userId, presenceHeartbeat]);
+
+  // When logged in and workspaces load: show user's own workspace first, or any workspace they're in
+  useEffect(() => {
+    if (!userId || workspaces.length === 0 || selectedWorkspaceId !== null) return;
+    const own = workspaces.find((w) => w?.createdBy === userId);
+    const first = workspaces[0];
+    const toSelect = own ?? first;
+    if (toSelect?._id) setSelectedWorkspaceId(toSelect._id);
+  }, [userId, workspaces, selectedWorkspaceId]);
 
   useEffect(() => {
     const handleResize = () => {
@@ -51,18 +92,19 @@ export function SlackLayout() {
       <BrowserNotifier workspaceId={selectedWorkspaceId} userId={userId} />
       <Sidebar
         selectedWorkspaceId={selectedWorkspaceId}
-        onSelectWorkspace={(id) => { setSelectedWorkspaceId(id); setSelected(null); }}
+        onSelectWorkspaceAction={(id) => { setSelectedWorkspaceId(id); setSelected(null); }}
         selected={selected}
-        onSelectChannel={handleSelectChannel}
-        onSelectDm={handleSelectDm}
-        onSelectHome={handleSelectHome}
+        onSelectChannelAction={handleSelectChannel}
+        onSelectDmAction={handleSelectDm}
+        onSelectHomeAction={handleSelectHome}
         leftNavActive={leftNavActive}
-        onLeftNavChange={setLeftNavActive}
+        onLeftNavChangeAction={setLeftNavActive}
         mobileOpen={sidebarOpen}
         onMobileClose={closeSidebar}
         startDmOpen={startDmOpen}
         onStartDmOpen={() => setStartDmOpen(true)}
         onStartDmClose={() => setStartDmOpen(false)}
+        onProfileClick={() => setProfilePanelOpen(true)}
       />
 
       <main className="flex-1 flex flex-col min-w-0 bg-white min-h-0">
@@ -70,6 +112,7 @@ export function SlackLayout() {
           workspaceId={selectedWorkspaceId}
           onMenuClick={() => setSidebarOpen((o) => !o)}
           onSelectChannel={handleSelectChannel}
+          onProfileClick={() => setProfilePanelOpen(true)}
         />
         <AnimatePresence mode="wait">
           {selected?.type === "channel" && selectedWorkspaceId && (
@@ -103,6 +146,29 @@ export function SlackLayout() {
           )}
         </AnimatePresence>
       </main>
+
+      {profilePanelOpen && userId && user && (
+        <div className="fixed inset-0 z-40 md:relative md:inset-auto md:z-auto flex md:block">
+          {/* Mobile: backdrop */}
+          <div
+            className="absolute inset-0 bg-black/40 md:hidden"
+            aria-hidden
+            onClick={() => setProfilePanelOpen(false)}
+          />
+          {/* Panel: full-width slide on mobile, side panel on desktop */}
+          <div className="relative ml-auto w-full max-w-[360px] h-full md:ml-0 md:w-[360px] md:shrink-0 bg-white shadow-xl md:shadow-none">
+            <ProfilePanel
+              userName={user.name}
+              imageUrl={user.imageUrl}
+              email={user.email}
+              isOnline={!!isOnline}
+              status={userStatus}
+              userId={userId}
+              onClose={() => setProfilePanelOpen(false)}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

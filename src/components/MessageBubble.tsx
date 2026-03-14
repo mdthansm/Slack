@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useCallback } from "react";
 import { Icon } from "@/components/icons/FontAwesomeIcons";
 import { useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
+import { ProfilePopup } from "./ProfilePopup";
 
 type MessageLike = {
   _id: string;
@@ -28,6 +29,8 @@ type ReactionData = {
   userNames: string[];
 };
 
+type UserStatus = { emoji: string; text: string } | null;
+
 type Props = {
   message: MessageLike;
   isOwn: boolean;
@@ -40,6 +43,9 @@ type Props = {
   currentUserName?: string;
   onForward?: () => void;
   onReply?: (userName: string, body: string) => void;
+  isOnline?: boolean;
+  userStatus?: UserStatus;
+  currentUserImageUrl?: string;
 };
 
 const REACTION_EMOJIS = ["👍", "❤️", "😂", "🔥", "👏", "😮"];
@@ -148,12 +154,17 @@ export function MessageBubble({
   currentUserName,
   onForward,
   onReply,
+  isOnline,
+  userStatus,
+  currentUserImageUrl,
 }: Props) {
   const [hovered, setHovered] = useState(false);
   const [showActions, setShowActions] = useState(false);
   const [showReactionPicker, setShowReactionPicker] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [showProfile, setShowProfile] = useState(false);
+  const avatarRef = useRef<HTMLDivElement>(null);
   const deleteChannelMsg = useMutation(api.messages.remove);
   const deleteDmMsg = useMutation(api.directMessages.remove);
   const toggleReaction = useMutation(api.reactions.toggle);
@@ -198,6 +209,39 @@ export function MessageBubble({
     onReply?.(message.userName ?? "Unknown", body);
   };
 
+  const hideTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const showTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const statusModalOpenRef = useRef(false);
+
+  const handleAvatarMouseEnter = useCallback(() => {
+    if (showTimeoutRef.current) clearTimeout(showTimeoutRef.current);
+    if (hideTimeoutRef.current) {
+      clearTimeout(hideTimeoutRef.current);
+      hideTimeoutRef.current = null;
+    }
+    showTimeoutRef.current = setTimeout(() => setShowProfile(true), 200);
+  }, []);
+
+  const handleAvatarMouseLeave = useCallback(() => {
+    if (showTimeoutRef.current) {
+      clearTimeout(showTimeoutRef.current);
+      showTimeoutRef.current = null;
+    }
+    hideTimeoutRef.current = setTimeout(() => setShowProfile(false), 300);
+  }, []);
+
+  const handlePopupMouseEnter = useCallback(() => {
+    if (hideTimeoutRef.current) {
+      clearTimeout(hideTimeoutRef.current);
+      hideTimeoutRef.current = null;
+    }
+  }, []);
+
+  const handlePopupMouseLeave = useCallback(() => {
+    if (statusModalOpenRef.current) return;
+    hideTimeoutRef.current = setTimeout(() => setShowProfile(false), 300);
+  }, []);
+
   const lines = (body || "").split("\n");
   const quotedLines = lines.filter((l) => l.startsWith("> "));
   const restLines = lines.filter((l) => !l.startsWith("> "));
@@ -209,6 +253,11 @@ export function MessageBubble({
   const likeReaction = reactions.find((r) => r.emoji === QUICK_LIKE);
   const hasLiked = likeReaction && currentUserId ? likeReaction.userIds.includes(currentUserId) : false;
 
+  const statusDot = userStatus ? userStatus.emoji : null;
+  const avatarImageUrl = message.userId === currentUserId
+    ? (currentUserImageUrl ?? message.userImageUrl)
+    : message.userImageUrl;
+
   return (
     <div
       className="group relative flex gap-2.5 py-2 px-3 -mx-3 rounded-xl hover:bg-gray-50/80 transition-colors"
@@ -216,16 +265,68 @@ export function MessageBubble({
       onMouseLeave={() => { setHovered(false); setShowActions(false); setShowReactionPicker(false); }}
       onTouchEnd={() => setShowActions((s) => !s)}
     >
-      {/* Avatar */}
-      <div className="w-9 h-9 rounded-full bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center text-white text-sm font-bold shrink-0 mt-0.5 shadow-sm">
-        {(message.userName ?? "?").charAt(0).toUpperCase()}
+      {/* Avatar with presence/status dot */}
+      <div
+        className="relative shrink-0 mt-0.5"
+        ref={avatarRef}
+        onMouseEnter={handleAvatarMouseEnter}
+        onMouseLeave={handleAvatarMouseLeave}
+      >
+        {avatarImageUrl ? (
+          <img
+            src={avatarImageUrl}
+            alt={message.userName ?? "?"}
+            className="w-9 h-9 rounded-full object-cover shadow-sm hover:opacity-90 transition cursor-pointer"
+          />
+        ) : (
+          <div className="w-9 h-9 rounded-full bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center text-white text-sm font-bold shadow-sm hover:opacity-90 transition cursor-pointer">
+            {(message.userName ?? "?").charAt(0).toUpperCase()}
+          </div>
+        )}
+        {statusDot ? (
+          <span
+            className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-white border border-gray-200 flex items-center justify-center text-[9px] leading-none shadow-sm"
+            title={userStatus?.text}
+          >
+            {statusDot}
+          </span>
+        ) : (
+          <span
+            className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-white ${
+              isOnline ? "bg-green-500" : "bg-red-500"
+            }`}
+            title={isOnline ? "Online" : "Offline"}
+          />
+        )}
       </div>
+
+      {/* Profile popup */}
+      {showProfile && (
+        <ProfilePopup
+          userName={message.userName ?? "Unknown"}
+          imageUrl={message.userId === currentUserId ? (currentUserImageUrl ?? message.userImageUrl) : message.userImageUrl}
+          isOnline={!!isOnline}
+          status={userStatus ?? null}
+          isSelf={message.userId === currentUserId}
+          userId={message.userId as Id<"users">}
+          onCloseAction={() => setShowProfile(false)}
+          anchorRect={avatarRef.current?.getBoundingClientRect() ?? null}
+          onMouseEnter={handlePopupMouseEnter}
+          onMouseLeave={handlePopupMouseLeave}
+          onStatusModalOpenChange={(open) => { statusModalOpenRef.current = open; }}
+        />
+      )}
 
       {/* Content */}
       <div className="flex-1 min-w-0">
-        {/* Name + time row */}
+        {/* Name + time + status row */}
         <div className="flex items-center gap-2 mb-0.5">
           <span className="font-semibold text-gray-900 text-[13px]">{message.userName ?? "Unknown"}</span>
+          {userStatus && (
+            <span className="text-xs text-gray-400 truncate max-w-[140px]" title={userStatus.text}>
+              {userStatus.emoji} {userStatus.text}
+            </span>
+          )}
           {time != null && <span className="text-[11px] text-gray-400">{time}</span>}
           {isForwarded && (
             <span className="text-[10px] text-purple-600 bg-purple-50 border border-purple-100 px-1.5 py-0.5 rounded-md font-semibold">Forwarded</span>
@@ -274,7 +375,6 @@ export function MessageBubble({
                 </button>
               );
             })}
-            {/* Quick add reaction */}
             <button
               onClick={() => setShowReactionPicker(true)}
               className="w-7 h-7 rounded-lg border border-dashed border-gray-200 flex items-center justify-center text-gray-300 hover:text-gray-500 hover:border-gray-400 transition"
@@ -301,10 +401,9 @@ export function MessageBubble({
         )}
       </div>
 
-      {/* ── Floating hover toolbar ── */}
+      {/* Floating hover toolbar */}
       {toolbarVisible && (
         <div className="absolute -top-3.5 right-2 flex items-center bg-white rounded-lg shadow-lg border border-gray-200 overflow-hidden z-20">
-          {/* Quick like */}
           <button
             onClick={handleQuickLike}
             className={`flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium transition-colors border-r border-gray-100 ${
@@ -315,12 +414,9 @@ export function MessageBubble({
             title={hasLiked ? "Remove like" : "Like"}
           >
             <span className="text-sm">👍</span>
-            {likeReaction && likeReaction.count > 0 && (
-              <span>{likeReaction.count}</span>
-            )}
+            {likeReaction && likeReaction.count > 0 && <span>{likeReaction.count}</span>}
           </button>
 
-          {/* Emoji picker toggle */}
           <button
             onClick={() => setShowReactionPicker((s) => !s)}
             className="px-2 py-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-50 transition-colors border-r border-gray-100"
@@ -329,7 +425,6 @@ export function MessageBubble({
             <Icon name="Smile" className="w-3.5 h-3.5" />
           </button>
 
-          {/* Reply */}
           {onReply && (
             <button
               onClick={handleReply}
@@ -340,7 +435,6 @@ export function MessageBubble({
             </button>
           )}
 
-          {/* Forward */}
           {onForward && (
             <button
               onClick={onForward}
@@ -351,7 +445,6 @@ export function MessageBubble({
             </button>
           )}
 
-          {/* Edit (own messages only, channel only) */}
           {canEdit && variant === "channel" && (
             <button
               onClick={onEdit}
@@ -362,7 +455,6 @@ export function MessageBubble({
             </button>
           )}
 
-          {/* Delete (own messages only) */}
           {canEdit && (
             <button
               onClick={() => setShowDeleteConfirm(true)}

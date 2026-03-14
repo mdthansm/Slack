@@ -73,6 +73,20 @@ export function ChannelView({
     messageIds.length > 0 ? { messageIds } : "skip"
   );
 
+  const uniqueUserIds = useMemo(() => {
+    const set = new Set<Id<"users">>();
+    for (const m of messages) set.add(m.userId);
+    return Array.from(set);
+  }, [messages]);
+  const onlineMap = useQuery(
+    api.presence.getOnlineUserIds,
+    uniqueUserIds.length > 0 ? { userIds: uniqueUserIds } : "skip"
+  );
+  const statusMap = useQuery(
+    api.status.getStatusForUsers,
+    uniqueUserIds.length > 0 ? { userIds: uniqueUserIds } : "skip"
+  );
+
   useEffect(() => {
     if (membership && "autoJoinNeeded" in membership && membership.autoJoinNeeded && userId) {
       joinAsAdmin({ channelId, userId }).catch(() => {});
@@ -178,6 +192,9 @@ export function ChannelView({
                         currentUserName={user?.name}
                         onForward={() => setForwardingMessageId(msg._id as Id<"messages">)}
                         onReply={(userName, body) => setReplyTo({ userName, body })}
+                        isOnline={onlineMap?.[msg.userId]}
+                        userStatus={statusMap?.[msg.userId] ?? undefined}
+                        currentUserImageUrl={user?.imageUrl}
                       />
                     </motion.div>
                   ))}

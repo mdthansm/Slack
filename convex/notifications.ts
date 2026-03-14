@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { mutation, query, internalQuery } from "./_generated/server";
 
 export const saveSubscription = mutation({
   args: {
@@ -60,5 +60,23 @@ export const hasSubscription = query({
       .withIndex("by_user", (q) => q.eq("userId", args.userId))
       .first();
     return !!sub;
+  },
+});
+
+/** Internal: return all push subscriptions for the given user ids (for sending message notifications). */
+export const getSubscriptionsForUserIds = internalQuery({
+  args: { userIds: v.array(v.id("users")) },
+  handler: async (ctx, args) => {
+    const subs: { endpoint: string; p256dh: string; auth: string }[] = [];
+    for (const userId of args.userIds) {
+      const userSubs = await ctx.db
+        .query("pushSubscriptions")
+        .withIndex("by_user", (q) => q.eq("userId", userId))
+        .collect();
+      for (const s of userSubs) {
+        subs.push({ endpoint: s.endpoint, p256dh: s.p256dh, auth: s.auth });
+      }
+    }
+    return subs;
   },
 });

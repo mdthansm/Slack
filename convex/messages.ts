@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { internal } from "./_generated/api";
 
 export const send = mutation({
   args: {
@@ -48,7 +49,7 @@ export const send = mutation({
       }
     }
 
-    return await ctx.db.insert("messages", {
+    const messageId = await ctx.db.insert("messages", {
       channelId: args.channelId,
       userId: args.userId,
       body: args.body.trim(),
@@ -59,6 +60,29 @@ export const send = mutation({
       fileType: args.fileType,
       fileSize: args.fileSize,
     });
+
+    const channel = await ctx.db.get(args.channelId);
+    if (channel) {
+      const members = await ctx.db
+        .query("channelMembers")
+        .withIndex("by_channel", (q) => q.eq("channelId", args.channelId))
+        .collect();
+      const recipientUserIds = members
+        .map((m) => m.userId)
+        .filter((id) => id !== args.userId);
+      if (recipientUserIds.length > 0) {
+        const bodyText =
+          args.body.trim() || (args.fileName ? `📎 ${args.fileName}` : "New message");
+        await ctx.scheduler.runAfter(0, internal.sendPush.sendPushToUsers, {
+          recipientUserIds,
+          title: `#${channel.name}`,
+          body: `${args.userName}: ${bodyText}`,
+          url: "/",
+        });
+      }
+    }
+
+    return messageId;
   },
 });
 
