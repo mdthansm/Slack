@@ -2,7 +2,6 @@ import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
 
-/** Get or create a DM thread between two users in a workspace. */
 export const getOrCreateThread = mutation({
   args: {
     workspaceId: v.id("workspaces"),
@@ -27,7 +26,6 @@ export const getOrCreateThread = mutation({
   },
 });
 
-/** List DM threads for a workspace (where user is participant). */
 export const listThreadsForUser = query({
   args: {
     workspaceId: v.id("workspaces"),
@@ -42,7 +40,6 @@ export const listThreadsForUser = query({
   },
 });
 
-/** List DM threads with last message preview for activity/Home. */
 export const listThreadsWithPreview = query({
   args: {
     workspaceId: v.id("workspaces"),
@@ -74,7 +71,6 @@ export const listThreadsWithPreview = query({
   },
 });
 
-/** Send a direct message. */
 export const send = mutation({
   args: {
     threadId: v.id("directMessageThreads"),
@@ -82,35 +78,65 @@ export const send = mutation({
     body: v.string(),
     userName: v.string(),
     userImageUrl: v.string(),
+    fileStorageId: v.optional(v.id("_storage")),
+    fileName: v.optional(v.string()),
+    fileType: v.optional(v.string()),
+    fileSize: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    if (!args.body.trim()) throw new Error("Message body cannot be empty");
+    if (!args.body.trim() && !args.fileStorageId) {
+      throw new Error("Message body or file is required");
+    }
     return await ctx.db.insert("directMessages", {
       threadId: args.threadId,
       userId: args.userId,
-      body: args.body.trim(),
+      body: args.body.trim() || (args.fileName ? `📎 ${args.fileName}` : ""),
       userName: args.userName,
       userImageUrl: args.userImageUrl,
+      fileStorageId: args.fileStorageId,
+      fileName: args.fileName,
+      fileType: args.fileType,
+      fileSize: args.fileSize,
     });
   },
 });
 
-/** List messages in a DM thread. */
 export const listByThread = query({
   args: { threadId: v.id("directMessageThreads") },
   handler: async (ctx, args) => {
-    return await ctx.db
+    const messages = await ctx.db
       .query("directMessages")
       .withIndex("by_thread", (q) => q.eq("threadId", args.threadId))
       .order("asc")
       .collect();
+
+    const withUrls = await Promise.all(
+      messages.map(async (msg) => {
+        let fileUrl: string | null = null;
+        if (msg.fileStorageId) {
+          fileUrl = await ctx.storage.getUrl(msg.fileStorageId);
+        }
+        return { ...msg, fileUrl };
+      })
+    );
+    return withUrls;
   },
 });
 
-/** Delete a direct message. */
 export const remove = mutation({
   args: { messageId: v.id("directMessages") },
   handler: async (ctx, args) => {
+    const msg = await ctx.db.get(args.messageId);
+    if (msg?.fileStorageId) {
+      await ctx.storage.delete(msg.fileStorageId);
+    }
+    const reactions = await ctx.db
+      .query("reactions")
+      .withIndex("by_direct_message", (q) => q.eq("directMessageId", args.messageId))
+      .collect();
+    for (const r of reactions) {
+      await ctx.db.delete(r._id);
+    }
     await ctx.db.delete(args.messageId);
     return args.messageId;
   },

@@ -7,10 +7,11 @@ import {
   useEffect,
   useState,
 } from "react";
-import { useAction, useQuery } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import type { Doc } from "../../convex/_generated/dataModel";
+import { stackAuthSignUp, stackAuthSignIn } from "@/lib/stack-auth";
 
 const STORAGE_KEY = "slack-clone-user-id";
 
@@ -37,8 +38,8 @@ export function CurrentUserProvider({ children }: { children: React.ReactNode })
     return !!localStorage.getItem(STORAGE_KEY);
   });
   const [optimisticUser, setOptimisticUser] = useState<Doc<"users"> | null>(null);
-  const signUpAction = useAction(api.auth.signUp);
-  const signInAction = useAction(api.auth.signIn);
+  const upsertFromAuth = useMutation(api.users.upsertFromAuth);
+  const markInvitesAccepted = useMutation(api.users.markInvitesAccepted);
   const userFromQuery = useQuery(
     api.users.get,
     userId ? { userId } : "skip"
@@ -65,26 +66,59 @@ export function CurrentUserProvider({ children }: { children: React.ReactNode })
 
   const signUp = useCallback(
     async (name: string, email: string, password: string) => {
-      await signUpAction({ name, email, password });
+      const emailNormalized = email.trim().toLowerCase();
+      if (password.length < 6) {
+        throw new Error("Password must be at least 6 characters.");
+      }
+
+      const stackResult = await stackAuthSignUp(emailNormalized, password);
+
+      const convexUserId = await upsertFromAuth({
+        email: emailNormalized,
+        name: name.trim(),
+        stackAuthId: stackResult.user_id,
+      });
+
+      await markInvitesAccepted({ email: emailNormalized });
+
+      if (typeof window !== "undefined") {
+        localStorage.setItem(STORAGE_KEY, convexUserId);
+        localStorage.setItem("stack-auth-token", stackResult.access_token);
+        localStorage.setItem("stack-auth-refresh", stackResult.refresh_token);
+      }
+      setUserId(convexUserId);
     },
-    [signUpAction]
+    [upsertFromAuth, markInvitesAccepted]
   );
 
   const signIn = useCallback(
     async (email: string, password: string) => {
-      const userDoc = await signInAction({ email, password });
-      if (!userDoc) {
-        throw new Error("Invalid email or password.");
+      const emailNormalized = email.trim().toLowerCase();
+
+      const stackResult = await stackAuthSignIn(emailNormalized, password);
+
+      const convexUserId = await upsertFromAuth({
+        email: emailNormalized,
+        name: emailNormalized.split("@")[0],
+        stackAuthId: stackResult.user_id,
+      });
+
+      if (typeof window !== "undefined") {
+        localStorage.setItem(STORAGE_KEY, convexUserId);
+        localStorage.setItem("stack-auth-token", stackResult.access_token);
+        localStorage.setItem("stack-auth-refresh", stackResult.refresh_token);
       }
-      if (typeof window !== "undefined") localStorage.setItem(STORAGE_KEY, userDoc._id);
-      setOptimisticUser(userDoc);
-      setUserId(userDoc._id);
+      setUserId(convexUserId);
     },
-    [signInAction]
+    [upsertFromAuth]
   );
 
   const signOut = useCallback(() => {
-    if (typeof window !== "undefined") localStorage.removeItem(STORAGE_KEY);
+    if (typeof window !== "undefined") {
+      localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem("stack-auth-token");
+      localStorage.removeItem("stack-auth-refresh");
+    }
     setUserId(null);
     setOptimisticUser(null);
   }, []);

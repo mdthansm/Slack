@@ -31,6 +31,21 @@ import {
   faChevronUp,
   faCheck,
   faEnvelope,
+  faThumbsUp,
+  faHeart,
+  faFaceSmile,
+  faFire,
+  faHandsClapping,
+  faShare,
+  faFile,
+  faFileImage,
+  faFileVideo,
+  faFilePdf,
+  faFileAudio,
+  faDownload,
+  faBellSlash,
+  faImage,
+  faReply,
 } from "@fortawesome/free-solid-svg-icons";
 
 const icons = {
@@ -63,6 +78,21 @@ const icons = {
   ChevronUp: faChevronUp,
   Check: faCheck,
   Envelope: faEnvelope,
+  ThumbsUp: faThumbsUp,
+  Heart: faHeart,
+  Smile: faFaceSmile,
+  Fire: faFire,
+  Clap: faHandsClapping,
+  Share: faShare,
+  File: faFile,
+  FileImage: faFileImage,
+  FileVideo: faFileVideo,
+  FilePdf: faFilePdf,
+  FileAudio: faFileAudio,
+  Download: faDownload,
+  BellSlash: faBellSlash,
+  Image: faImage,
+  Reply: faReply,
 } as const;
 
 type IconName = keyof typeof icons;

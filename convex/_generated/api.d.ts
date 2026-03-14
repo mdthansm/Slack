@@ -13,7 +13,10 @@ import type * as auth from "../auth.js";
 import type * as channels from "../channels.js";
 import type * as directMessages from "../directMessages.js";
 import type * as email from "../email.js";
+import type * as files from "../files.js";
 import type * as messages from "../messages.js";
+import type * as notifications from "../notifications.js";
+import type * as reactions from "../reactions.js";
 import type * as users from "../users.js";
 import type * as workspaces from "../workspaces.js";
 
@@ -29,7 +32,10 @@ declare const fullApi: ApiFromModules<{
   channels: typeof channels;
   directMessages: typeof directMessages;
   email: typeof email;
+  files: typeof files;
   messages: typeof messages;
+  notifications: typeof notifications;
+  reactions: typeof reactions;
   users: typeof users;
   workspaces: typeof workspaces;
 }>;

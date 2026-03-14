@@ -8,8 +8,11 @@ export default defineSchema({
     imageUrl: v.optional(v.string()),
     passwordSalt: v.optional(v.string()),
     passwordHash: v.optional(v.string()),
+    stackAuthId: v.optional(v.string()),
     createdAt: v.optional(v.number()),
-  }).index("by_email", ["email"]),
+  })
+    .index("by_email", ["email"])
+    .index("by_stack_auth_id", ["stackAuthId"]),
 
   workspaces: defineTable({
     name: v.string(),
@@ -37,10 +40,7 @@ export default defineSchema({
     invitedByUserId: v.id("users"),
     workspaceId: v.optional(v.id("workspaces")),
     role: v.optional(v.string()),
-    status: v.union(
-      v.literal("pending"),
-      v.literal("accepted")
-    ),
+    status: v.union(v.literal("pending"), v.literal("accepted")),
     createdAt: v.number(),
   })
     .index("by_email", ["email"])
@@ -87,6 +87,10 @@ export default defineSchema({
     userImageUrl: v.optional(v.string()),
     text: v.optional(v.string()),
     createdAt: v.optional(v.number()),
+    fileStorageId: v.optional(v.id("_storage")),
+    fileName: v.optional(v.string()),
+    fileType: v.optional(v.string()),
+    fileSize: v.optional(v.number()),
   }).index("by_channel", ["channelId"]),
 
   directMessageThreads: defineTable({
@@ -100,5 +104,46 @@ export default defineSchema({
     body: v.string(),
     userName: v.string(),
     userImageUrl: v.string(),
+    fileStorageId: v.optional(v.id("_storage")),
+    fileName: v.optional(v.string()),
+    fileType: v.optional(v.string()),
+    fileSize: v.optional(v.number()),
   }).index("by_thread", ["threadId"]),
+
+  reactions: defineTable({
+    messageId: v.optional(v.id("messages")),
+    directMessageId: v.optional(v.id("directMessages")),
+    userId: v.id("users"),
+    emoji: v.string(),
+    userName: v.optional(v.string()),
+  })
+    .index("by_message", ["messageId"])
+    .index("by_direct_message", ["directMessageId"])
+    .index("by_message_and_user", ["messageId", "userId"]),
+
+  messageForwards: defineTable({
+    sourceMessageId: v.optional(v.id("messages")),
+    sourceDirectMessageId: v.optional(v.id("directMessages")),
+    forwardedByUserId: v.id("users"),
+    forwardedByName: v.string(),
+    targetChannelId: v.optional(v.id("channels")),
+    targetThreadId: v.optional(v.id("directMessageThreads")),
+    originalBody: v.string(),
+    originalUserName: v.string(),
+    originalFileName: v.optional(v.string()),
+    originalFileStorageId: v.optional(v.id("_storage")),
+    originalFileType: v.optional(v.string()),
+  })
+    .index("by_target_channel", ["targetChannelId"])
+    .index("by_target_thread", ["targetThreadId"]),
+
+  pushSubscriptions: defineTable({
+    userId: v.id("users"),
+    endpoint: v.string(),
+    p256dh: v.string(),
+    auth: v.string(),
+    createdAt: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_endpoint", ["endpoint"]),
 });

@@ -13,18 +13,43 @@ type Props = {
   onAcceptedChannel?: (channelId: Id<"channels">) => void;
 };
 
+function urlBase64ToUint8Array(base64String: string): Uint8Array {
+  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+  const raw = atob(base64);
+  const arr = new Uint8Array(raw.length);
+  for (let i = 0; i < raw.length; i++) arr[i] = raw.charCodeAt(i);
+  return arr;
+}
+
+const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? "";
+
 export function NotificationBell({ userId, workspaceId, onAcceptedChannel }: Props) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const [pushEnabled, setPushEnabled] = useState(false);
+  const [pushLoading, setPushLoading] = useState(false);
 
   const channelInvites = useQuery(
     api.channels.listPendingInvites,
     userId && workspaceId ? { userId, workspaceId } : "skip"
   ) ?? [];
 
+  const hasPushSub = useQuery(
+    api.notifications.hasSubscription,
+    userId ? { userId } : "skip"
+  );
+
+  const savePushSubscription = useMutation(api.notifications.saveSubscription);
+  const removePushSubscription = useMutation(api.notifications.removeSubscription);
+
   const acceptChannelInvite = useMutation(api.channels.acceptInvite);
   const declineChannelInvite = useMutation(api.channels.declineInvite);
   const [processingId, setProcessingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (hasPushSub !== undefined) setPushEnabled(hasPushSub);
+  }, [hasPushSub]);
 
   useEffect(() => {
     const onClickOutside = (e: MouseEvent) => {
@@ -33,6 +58,48 @@ export function NotificationBell({ userId, workspaceId, onAcceptedChannel }: Pro
     document.addEventListener("mousedown", onClickOutside);
     return () => document.removeEventListener("mousedown", onClickOutside);
   }, []);
+
+  const handleTogglePush = useCallback(async () => {
+    if (!userId) return;
+    setPushLoading(true);
+    try {
+      if (pushEnabled) {
+        const registration = await navigator.serviceWorker.ready;
+        const subscription = await registration.pushManager.getSubscription();
+        if (subscription) {
+          await removePushSubscription({ endpoint: subscription.endpoint });
+          await subscription.unsubscribe();
+        }
+        setPushEnabled(false);
+      } else {
+        const permission = await Notification.requestPermission();
+        if (permission !== "granted") {
+          alert("Please enable notifications in your browser settings.");
+          return;
+        }
+        const registration = await navigator.serviceWorker.register("/sw.js");
+        await navigator.serviceWorker.ready;
+        const subscription = await registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+        });
+        const sub = subscription.toJSON();
+        if (sub.endpoint && sub.keys?.p256dh && sub.keys?.auth) {
+          await savePushSubscription({
+            userId,
+            endpoint: sub.endpoint,
+            p256dh: sub.keys.p256dh,
+            auth: sub.keys.auth,
+          });
+          setPushEnabled(true);
+        }
+      }
+    } catch (err) {
+      console.error("Push notification error:", err);
+    } finally {
+      setPushLoading(false);
+    }
+  }, [userId, pushEnabled, savePushSubscription, removePushSubscription]);
 
   const handleAcceptChannel = useCallback(
     async (inviteId: Id<"channelInvites">) => {
@@ -93,13 +160,29 @@ export function NotificationBell({ userId, workspaceId, onAcceptedChannel }: Pro
           >
             <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
               <h3 className="text-sm font-semibold text-gray-900">Notifications</h3>
-              <button
-                type="button"
-                onClick={() => setOpen(false)}
-                className="sm:hidden p-1.5 rounded-lg hover:bg-gray-100 text-gray-400"
-              >
-                <Icon name="X" className="w-4 h-4" />
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleTogglePush}
+                  disabled={pushLoading}
+                  className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition ${
+                    pushEnabled
+                      ? "bg-green-50 text-green-700 hover:bg-green-100"
+                      : "bg-gray-50 text-gray-500 hover:bg-gray-100"
+                  } disabled:opacity-50`}
+                  title={pushEnabled ? "Disable push notifications" : "Enable push notifications"}
+                >
+                  <Icon name={pushEnabled ? "Bell" : "BellSlash"} className="w-3 h-3" />
+                  {pushLoading ? "..." : pushEnabled ? "On" : "Off"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setOpen(false)}
+                  className="sm:hidden p-1.5 rounded-lg hover:bg-gray-100 text-gray-400"
+                >
+                  <Icon name="X" className="w-4 h-4" />
+                </button>
+              </div>
             </div>
 
             <div className="max-h-[60vh] sm:max-h-96 overflow-y-auto overscroll-contain">

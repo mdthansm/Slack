@@ -1,8 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 
-/** Send a message to a channel. Sender must be a channel member or a workspace admin.
- *  Workspace admins are auto-added to the channel on first message. */
 export const send = mutation({
   args: {
     channelId: v.id("channels"),
@@ -10,9 +8,15 @@ export const send = mutation({
     body: v.string(),
     userName: v.string(),
     userImageUrl: v.string(),
+    fileStorageId: v.optional(v.id("_storage")),
+    fileName: v.optional(v.string()),
+    fileType: v.optional(v.string()),
+    fileSize: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    if (!args.body.trim()) throw new Error("Message body cannot be empty");
+    if (!args.body.trim() && !args.fileStorageId) {
+      throw new Error("Message body or file is required");
+    }
 
     let membership = await ctx.db
       .query("channelMembers")
@@ -24,7 +28,6 @@ export const send = mutation({
     if (!membership) {
       const channel = await ctx.db.get(args.channelId);
       if (!channel) throw new Error("Channel not found");
-
       const workspace = await ctx.db.get(channel.workspaceId);
       const wsMembership = await ctx.db
         .query("workspaceMembers")
@@ -34,7 +37,6 @@ export const send = mutation({
         .first();
       const isWsAdmin =
         wsMembership?.role === "admin" || workspace?.createdBy === args.userId;
-
       if (isWsAdmin) {
         await ctx.db.insert("channelMembers", {
           channelId: args.channelId,
@@ -52,24 +54,36 @@ export const send = mutation({
       body: args.body.trim(),
       userName: args.userName,
       userImageUrl: args.userImageUrl,
+      fileStorageId: args.fileStorageId,
+      fileName: args.fileName,
+      fileType: args.fileType,
+      fileSize: args.fileSize,
     });
   },
 });
 
-/** List messages in a channel (newest last; add ordering if needed). */
 export const listByChannel = query({
   args: { channelId: v.id("channels") },
   handler: async (ctx, args) => {
-    return await ctx.db
+    const messages = await ctx.db
       .query("messages")
       .withIndex("by_channel", (q) => q.eq("channelId", args.channelId))
       .order("asc")
       .collect();
+
+    const withUrls = await Promise.all(
+      messages.map(async (msg) => {
+        let fileUrl: string | null = null;
+        if (msg.fileStorageId) {
+          fileUrl = await ctx.storage.getUrl(msg.fileStorageId);
+        }
+        return { ...msg, fileUrl };
+      })
+    );
+    return withUrls;
   },
 });
 
-/** Recent activity: latest messages from channels the user is in (for this workspace).
- *  Workspace admins see messages from all channels. */
 export const listRecentForUser = query({
   args: { workspaceId: v.id("workspaces"), userId: v.id("users") },
   handler: async (ctx, args) => {
@@ -115,7 +129,6 @@ export const listRecentForUser = query({
   },
 });
 
-/** Update a message (e.g. edit). */
 export const update = mutation({
   args: {
     messageId: v.id("messages"),
@@ -128,10 +141,20 @@ export const update = mutation({
   },
 });
 
-/** Delete a message. */
 export const remove = mutation({
   args: { messageId: v.id("messages") },
   handler: async (ctx, args) => {
+    const msg = await ctx.db.get(args.messageId);
+    if (msg?.fileStorageId) {
+      await ctx.storage.delete(msg.fileStorageId);
+    }
+    const reactions = await ctx.db
+      .query("reactions")
+      .withIndex("by_message", (q) => q.eq("messageId", args.messageId))
+      .collect();
+    for (const r of reactions) {
+      await ctx.db.delete(r._id);
+    }
     await ctx.db.delete(args.messageId);
     return args.messageId;
   },

@@ -9,12 +9,15 @@ import { HomeView } from "@/components/views/HomeView";
 import { ActivityView } from "@/components/views/ActivityView";
 import { FilesView } from "@/components/views/FilesView";
 import { AppHeader } from "@/components/AppHeader";
+import { BrowserNotifier } from "@/components/notifications/BrowserNotifier";
+import { useCurrentUser } from "@/context/CurrentUserContext";
 import type { Id } from "../../convex/_generated/dataModel";
 
 type Selected = { type: "channel"; channelId: Id<"channels"> } | { type: "dm"; threadId: Id<"directMessageThreads"> };
 type LeftNav = "home" | "dms" | "activity" | "files";
 
 export function SlackLayout() {
+  const { userId } = useCurrentUser();
   const [selectedWorkspaceId, setSelectedWorkspaceId] = useState<Id<"workspaces"> | null>(null);
   const [selected, setSelected] = useState<Selected | null>(null);
   const [leftNavActive, setLeftNavActive] = useState<LeftNav>("home");
@@ -45,6 +48,7 @@ export function SlackLayout() {
 
   return (
     <div className="flex h-screen bg-white overflow-hidden">
+      <BrowserNotifier workspaceId={selectedWorkspaceId} userId={userId} />
       <Sidebar
         selectedWorkspaceId={selectedWorkspaceId}
         onSelectWorkspace={(id) => { setSelectedWorkspaceId(id); setSelected(null); }}

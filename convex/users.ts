@@ -14,7 +14,6 @@ function toSafeUser(doc: { _id: SafeUser["_id"]; _creationTime: number; name: st
   return { _id: doc._id, _creationTime: doc._creationTime, name: doc.name, email: doc.email, imageUrl: doc.imageUrl ?? "" };
 }
 
-/** Get user by email (for sign in). Returns full user doc or null. */
 export const getByEmail = query({
   args: { email: v.string() },
   handler: async (ctx, args) => {
@@ -26,7 +25,6 @@ export const getByEmail = query({
   },
 });
 
-/** Internal: get user by email including password fields (server-only). */
 export const getByEmailForAuth = internalQuery({
   args: { email: v.string() },
   handler: async (ctx, args) => {
@@ -41,7 +39,6 @@ export const getByEmailForAuth = internalQuery({
   },
 });
 
-/** Internal: create user with pre-hashed password (called from action). */
 export const createWithHash = internalMutation({
   args: {
     name: v.string(),
@@ -68,7 +65,78 @@ export const createWithHash = internalMutation({
   },
 });
 
-/** Internal: get user by ID (for server-side actions). */
+export const upsertFromAuth = mutation({
+  args: {
+    email: v.string(),
+    name: v.string(),
+    stackAuthId: v.string(),
+    imageUrl: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const emailNormalized = args.email.trim().toLowerCase();
+
+    const byStackAuth = await ctx.db
+      .query("users")
+      .withIndex("by_stack_auth_id", (q) => q.eq("stackAuthId", args.stackAuthId))
+      .first();
+    if (byStackAuth) return byStackAuth._id;
+
+    const byEmail = await ctx.db
+      .query("users")
+      .withIndex("by_email", (q) => q.eq("email", emailNormalized))
+      .first();
+    if (byEmail) {
+      await ctx.db.patch(byEmail._id, { stackAuthId: args.stackAuthId });
+      return byEmail._id;
+    }
+
+    return await ctx.db.insert("users", {
+      name: args.name,
+      email: emailNormalized,
+      imageUrl: args.imageUrl ?? "",
+      stackAuthId: args.stackAuthId,
+    });
+  },
+});
+
+export const markInvitesAccepted = mutation({
+  args: { email: v.string() },
+  handler: async (ctx, args) => {
+    const emailNormalized = args.email.trim().toLowerCase();
+    const invites = await ctx.db
+      .query("appInvites")
+      .withIndex("by_email", (q) => q.eq("email", emailNormalized))
+      .collect();
+    for (const inv of invites) {
+      if (inv.status === "pending") {
+        await ctx.db.patch(inv._id, { status: "accepted" });
+        if (inv.workspaceId) {
+          const existing = await ctx.db
+            .query("workspaceMembers")
+            .withIndex("by_workspace_and_user", (q) =>
+              q.eq("workspaceId", inv.workspaceId!)
+            )
+            .collect();
+          const userId = await ctx.db
+            .query("users")
+            .withIndex("by_email", (q) => q.eq("email", emailNormalized))
+            .first();
+          if (userId) {
+            const alreadyMember = existing.some((m) => m.userId === userId._id);
+            if (!alreadyMember) {
+              await ctx.db.insert("workspaceMembers", {
+                workspaceId: inv.workspaceId!,
+                userId: userId._id,
+                role: inv.role ?? "member",
+              });
+            }
+          }
+        }
+      }
+    }
+  },
+});
+
 export const getInternal = internalQuery({
   args: { userId: v.id("users") },
   handler: async (ctx, args) => {
@@ -77,7 +145,6 @@ export const getInternal = internalQuery({
   },
 });
 
-/** Get a user by Id (safe fields only, no password). */
 export const get = query({
   args: { userId: v.id("users") },
   handler: async (ctx, args) => {
@@ -86,7 +153,6 @@ export const get = query({
   },
 });
 
-/** List all users (safe fields only). */
 export const list = query({
   args: {},
   handler: async (ctx) => {
@@ -95,7 +161,6 @@ export const list = query({
   },
 });
 
-/** Search users by email or name (username). Case-insensitive partial match. Returns safe user fields only. */
 export const search = query({
   args: { query: v.string() },
   handler: async (ctx, args) => {
@@ -111,7 +176,6 @@ export const search = query({
   },
 });
 
-/** Update user profile. */
 export const update = mutation({
   args: {
     userId: v.id("users"),
