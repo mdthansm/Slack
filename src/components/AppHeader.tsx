@@ -15,7 +15,7 @@ type Props = {
 };
 
 export function AppHeader({ workspaceId, onMenuClick, onSelectChannel, onProfileClick }: Props) {
-  const { userId } = useCurrentUser();
+  const { userId, user } = useCurrentUser();
   const workspace = useQuery(
     api.workspaces.get,
     workspaceId ? { workspaceId } : "skip"
@@ -46,22 +46,37 @@ export function AppHeader({ workspaceId, onMenuClick, onSelectChannel, onProfile
         </div>
       </div>
 
-      <NotificationBell
-        userId={userId}
-        workspaceId={workspaceId}
-        onAcceptedChannel={onSelectChannel}
-      />
-      {userId && onProfileClick && (
-        <button
-          type="button"
-          onClick={onProfileClick}
-          className="p-2.5 rounded-lg hover:bg-gray-100 active:bg-gray-200 text-gray-600 transition"
-          aria-label="Open profile"
-          title="Profile"
-        >
-          <Icon name="User" className="w-5 h-5 sm:w-4 sm:h-4" />
-        </button>
-      )}
+      <div className="ml-auto flex items-center gap-1 sm:gap-2 shrink-0">
+        <NotificationBell
+          userId={userId}
+          workspaceId={workspaceId}
+          onAcceptedChannel={onSelectChannel}
+        />
+        {userId && onProfileClick && (
+          <button
+            type="button"
+            onClick={onProfileClick}
+            className="shrink-0 rounded-full ring-2 ring-transparent hover:ring-gray-200 focus:ring-gray-300 focus:outline-none transition-all active:scale-95"
+            aria-label="Open profile"
+            title="Profile"
+          >
+          {user?.imageUrl ? (
+            <img
+              src={user.imageUrl}
+              alt={user.name ?? "Profile"}
+              className="w-8 h-8 sm:w-9 sm:h-9 rounded-full object-cover border border-gray-200"
+            />
+          ) : (
+            <span
+              className="flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-gray-700 text-white text-sm font-semibold border border-gray-200 shrink-0"
+              aria-hidden
+            >
+              {(user?.name?.trim().charAt(0) ?? "?").toUpperCase()}
+            </span>
+          )}
+          </button>
+        )}
+      </div>
     </header>
   );
 }
